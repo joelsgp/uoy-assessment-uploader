@@ -14,7 +14,6 @@ from selenium.webdriver.support import expected_conditions as ec
 
 
 # todo: re-implement with saml auth and requests, as alternative to selenium
-# todo readme
 
 
 __version__ = "0.1.0"
@@ -108,7 +107,6 @@ def upload(driver: WebDriver, file_name: str, dry_run: bool):
     input_checkbox = driver.find_element(By.ID, "ownwork")
     input_checkbox.click()
     if not dry_run:
-        # todo don't use submit()
         input_checkbox.submit()
 
 
