@@ -2,9 +2,13 @@
 
 ## Install
 1. When you have python and pip ready, it's as easy as:
-    ```shell
-    python -m pip install "git+https://github.com/joelsgp/uoy-assessment-uploader"
-    ```
+   ```shell
+   python -m pip install "uoy-assessment-uploader"
+   ```
+   - or, directly from the repo:
+      ```shell
+      python -m pip install "git+https://github.com/joelsgp/uoy-assessment-uploader"
+      ```
 2. You need the Chrome browser installed. Sorry!
     - I need a cookie management feature Firefox doesn't have.
     - If you have Chromium instead, pass the `--chromium` flag.
