@@ -2,6 +2,7 @@
 
 import getpass
 import json
+import sys
 from argparse import ArgumentParser
 from pathlib import Path
 
@@ -83,9 +84,9 @@ def enter_exam_number(driver: WebDriver, exam_number: str):
     input_exam_number.submit()
 
 
-def upload(driver: WebDriver, fp: Path):
+def upload(driver: WebDriver, file_name: str):
     input_file = driver.find_element(By.ID, "file")
-    input_file.send_keys(str(fp.resolve()))
+    input_file.send_keys(file_name)
     input_checkbox = driver.find_element(By.ID, "ownwork")
     input_checkbox.click()
     input_checkbox.submit()
@@ -97,7 +98,7 @@ def do(
     username: str,
     password: str,
     exam_number: str,
-    fp: Path,
+    file_name: str,
 ):
     wait = WebDriverWait(driver, TIMEOUT)
 
@@ -115,7 +116,7 @@ def do(
             wait.until(ec.url_to_be(submit_url))
         elif driver.current_url == submit_url:
             print("Uploading file...")
-            upload(driver, fp)
+            upload(driver, file_name)
             wait.until(
                 ec.text_to_be_present_in_element(
                     [By.CLASS_NAME, "alert-success"], "File submitted successfully."
@@ -148,7 +149,12 @@ def main():
     do_save_cookies: bool = args.do_save_cookies
     headless: bool = args.headless
 
-    # todo check fp exists
+    # check zip to be uploaded exists
+    if not fp.is_file():
+        print(f"File doesn't exist '{fp}'")
+        sys.exit(1)
+    fp.resolve()
+    file_name = str(fp)
 
     # start webdriver
     options = webdriver.ChromeOptions()
@@ -169,7 +175,7 @@ def main():
             username=username,
             password=password,
             exam_number=exam_number,
-            fp=fp,
+            file_name=file_name,
         )
     except Exception:
         raise
