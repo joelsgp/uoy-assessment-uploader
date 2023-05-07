@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+"""Tool for automating submitting assessments to the University of York Computer Science department."""
+
 import getpass
 import json
 from argparse import ArgumentParser
@@ -11,15 +13,18 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 
+
+__version__ = "0.1.0"
+
 TIMEOUT = 10
-URL_BASE = "https://teaching.cs.york.ac.uk/"
+# todo
 URL_SUBMIT = "https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A"
 URL_LOGIN = "https://shib.york.ac.uk/idp/profile/SAML2/Redirect/SSO?execution=e1s1"
 URL_EXAM_NUMBER = "https://teaching.cs.york.ac.uk/student/confirm-exam-number"
 
 
 def get_parser() -> ArgumentParser:
-    parser = ArgumentParser()
+    parser = ArgumentParser(description=__doc__)
 
     parser.add_argument("-u", "--username", required=True)
     parser.add_argument(
