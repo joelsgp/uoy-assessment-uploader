@@ -1,7 +1,6 @@
 """Tool for automating submitting assessments to the University of York Computer Science department."""
 
 import getpass
-import json
 import sys
 from argparse import ArgumentParser
 from pathlib import Path
@@ -15,8 +14,7 @@ from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 
-
-# todo: re-implement with saml auth and requests, as alternative to selenium
+from .selenium import enter_exam_number, load_cookies, login, save_cookies, upload
 
 
 __version__ = "0.2.2"
@@ -104,48 +102,6 @@ class Args:
     save_cookies: bool
     delete_cookies: bool
     headless: bool
-
-
-def save_cookies(driver: WebDriver, fp: Path):
-    cookies = driver.get_cookies()
-    with open(fp, "w", encoding='utf-8') as f:
-        json.dump(cookies, f, indent=4)
-
-
-def load_cookies(driver: webdriver.Chrome, fp: Path):
-    try:
-        with open(fp, encoding='utf-8') as f:
-            cookies = json.load(f)
-    except FileNotFoundError:
-        print("Not loading cookies, file doesn't exist.")
-    else:
-        print("Loading cookies.")
-        for c in cookies:
-            driver.execute_cdp_cmd("Network.setCookie", c)
-
-
-def login(driver: WebDriver, username: str, password: str):
-    input_username = driver.find_element(By.ID, "username")
-    input_username.send_keys(username)
-    input_password = driver.find_element(By.ID, "password")
-    input_password.send_keys(password)
-    input_button = driver.find_element(By.NAME, "_eventId_proceed")
-    input_button.click()
-
-
-def enter_exam_number(driver: WebDriver, exam_number: str):
-    input_exam_number = driver.find_element(By.ID, "examNumber")
-    input_exam_number.send_keys(exam_number)
-    input_exam_number.submit()
-
-
-def upload(driver: WebDriver, file_name: str, dry_run: bool):
-    input_file = driver.find_element(By.ID, "file")
-    input_file.send_keys(file_name)
-    input_checkbox = driver.find_element(By.ID, "ownwork")
-    input_checkbox.click()
-    if not dry_run:
-        input_checkbox.submit()
 
 
 def ensure_details(
