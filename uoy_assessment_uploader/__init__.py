@@ -15,6 +15,8 @@ from selenium.webdriver.support.wait import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.core.utils import ChromeType
 
+
+# todo: only demand login details if no cookies present, or when cookies declined by site
 # todo: re-implement with saml auth and requests, as alternative to selenium
 
 
