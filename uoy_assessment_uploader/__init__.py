@@ -17,8 +17,7 @@ from selenium.webdriver.support import expected_conditions as ec
 __version__ = "0.1.0"
 
 TIMEOUT = 10
-# todo
-URL_SUBMIT = "https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A"
+URL_SUBMIT_BASE = "https://teaching.cs.york.ac.uk/student"
 URL_LOGIN = "https://shib.york.ac.uk/idp/profile/SAML2/Redirect/SSO?execution=e1s1"
 URL_EXAM_NUMBER = "https://teaching.cs.york.ac.uk/student/confirm-exam-number"
 
@@ -34,6 +33,12 @@ def get_parser() -> ArgumentParser:
     )
     parser.add_argument("-e", "--exam-number", required=True)
     parser.add_argument("-f", "--file", type=Path, default="exam.zip")
+    parser.add_argument(
+        "-n",
+        "--submit-url",
+        required=True,
+        help="The specific exam to upload to, e.g. /2021-2/submit/COM00012C/901/A",
+    )
     parser.add_argument("--cookie-file", type=Path, default=".cookies.json")
     parser.add_argument(
         "--no-save-cookies", dest="do_save_cookies", action="store_false"
@@ -84,22 +89,29 @@ def upload(driver: WebDriver, fp: Path):
     input_checkbox.submit()
 
 
-def do(driver: WebDriver, username: str, password: str, exam_number: str, fp: Path):
+def do(
+    driver: WebDriver,
+    submit_url: str,
+    username: str,
+    password: str,
+    exam_number: str,
+    fp: Path,
+):
     wait = WebDriverWait(driver, TIMEOUT)
 
     while True:
-        driver.get(URL_SUBMIT)
+        driver.get(submit_url)
         if driver.current_url == URL_LOGIN:
             print("Logging in..")
             login(driver, username, password)
             wait.until(
-                ec.any_of(ec.url_to_be(URL_EXAM_NUMBER), ec.url_to_be(URL_SUBMIT))
+                ec.any_of(ec.url_to_be(URL_EXAM_NUMBER), ec.url_to_be(submit_url))
             )
         elif driver.current_url == URL_EXAM_NUMBER:
             print("Entering exam number..")
             enter_exam_number(driver, exam_number)
-            wait.until(ec.url_to_be(URL_SUBMIT))
-        elif driver.current_url == URL_SUBMIT:
+            wait.until(ec.url_to_be(submit_url))
+        elif driver.current_url == submit_url:
             print("Uploading file...")
             upload(driver, fp)
             wait.until(
@@ -113,6 +125,13 @@ def do(driver: WebDriver, username: str, password: str, exam_number: str, fp: Pa
             raise Exception("bruh")
 
 
+def resolve_submit_url(submit_url: str) -> str:
+    base = URL_SUBMIT_BASE
+    submit_url = submit_url.removeprefix(base).strip("/")
+    submit_url = f"{base}/{submit_url}"
+    return submit_url
+
+
 def main():
     parser = get_parser()
     args = parser.parse_args()
@@ -120,6 +139,7 @@ def main():
     username: str = args.username
     password: str = args.password or getpass.getpass()
     exam_number: str = args.exam_number
+    submit_url: str = resolve_submit_url(args.submit_url)
     fp: Path = args.file
     cookie_path: Path = args.cookie_file
     do_save_cookies: bool = args.do_save_cookies
@@ -135,7 +155,14 @@ def main():
         load_cookies(driver, cookie_path)
 
     try:
-        do(driver, username, password, exam_number, fp)
+        do(
+            driver=driver,
+            submit_url=submit_url,
+            username=username,
+            password=password,
+            exam_number=exam_number,
+            fp=fp,
+        )
     except Exception:
         raise
     else:
