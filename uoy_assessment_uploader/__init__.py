@@ -175,9 +175,9 @@ def main():
     args = parser.parse_args()
 
     username: str = args.username
-    password: str = args.password or getpass.getpass()
+    password: str = args.password
     exam_number: str = args.exam_number
-    submit_url: str = resolve_submit_url(args.submit_url)
+    submit_url: str = args.submit_url
     fp: Path = args.file
     dry_run: bool = args.dry_run
     cookie_path: Path = args.cookie_file
@@ -188,9 +188,15 @@ def main():
 
     # check zip to be uploaded exists
     if not fp.is_file():
-        print(f"File doesn't exist '{fp}'")
+        print(f"File doesn't exist '{fp}'.")
         sys.exit(1)
+    print(f"Found file '{fp}'.")
     file_name = str(fp.resolve())
+
+    # verify arguments
+    if password is None:
+        password = getpass.getpass()
+    submit_url = resolve_submit_url(submit_url)
 
     # webdriver setup
     # options
