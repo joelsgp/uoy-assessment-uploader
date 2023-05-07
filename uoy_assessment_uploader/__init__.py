@@ -108,13 +108,13 @@ class Args:
 
 def save_cookies(driver: WebDriver, fp: Path):
     cookies = driver.get_cookies()
-    with open(fp, "w") as f:
-        json.dump(cookies, f)
+    with open(fp, "w", encoding='utf-8') as f:
+        json.dump(cookies, f, indent=4)
 
 
 def load_cookies(driver: webdriver.Chrome, fp: Path):
     try:
-        with open(fp) as f:
+        with open(fp, encoding='utf-8') as f:
             cookies = json.load(f)
     except FileNotFoundError:
         print("Not loading cookies, file doesn't exist.")
