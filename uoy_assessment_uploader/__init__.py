@@ -7,11 +7,13 @@ from argparse import ArgumentParser
 from pathlib import Path
 
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
-
+from selenium.webdriver.support.wait import WebDriverWait
+from webdriver_manager.chrome import ChromeDriverManager
+from webdriver_manager.core.utils import ChromeType
 
 # todo: re-implement with saml auth and requests, as alternative to selenium
 
@@ -53,7 +55,7 @@ def get_parser() -> ArgumentParser:
         action="store_true",
         help="Log in but don't actually upload the file.",
     )
-    # selenium related
+    # selenium cookies
     parser.add_argument("--cookie-file", type=Path, default=DEFAULT_ARG_COOKIE_FILE)
     parser.add_argument(
         "--no-save-cookies", dest="do_save_cookies", action="store_false"
@@ -63,7 +65,16 @@ def get_parser() -> ArgumentParser:
         action="store_true",
         help="Before starting, delete previous login cookies (if they exist).",
     )
-    parser.add_argument("-q", "--headless", action="store_true")
+    # other selenium options
+    parser.add_argument(
+        "-q",
+        "--headless",
+        action="store_true",
+        help="Hide the browser window. Full auto.",
+    )
+    parser.add_argument(
+        "--chromium", action="store_true", help="Use Chromium instead of Google Chrome."
+    )
 
     return parser
 
@@ -79,9 +90,9 @@ def load_cookies(driver: webdriver.Chrome, fp: Path):
         with open(fp) as f:
             cookies = json.load(f)
     except FileNotFoundError:
-        print("Not loading cookies, file doesn't exist")
+        print("Not loading cookies, file doesn't exist.")
     else:
-        print("Loading cookies")
+        print("Loading cookies.")
         for c in cookies:
             driver.execute_cdp_cmd("Network.setCookie", c)
 
@@ -173,6 +184,7 @@ def main():
     do_save_cookies: bool = args.do_save_cookies
     delete_cookies: bool = args.delete_cookies
     headless: bool = args.headless
+    chromium: bool = args.chromium
 
     # check zip to be uploaded exists
     if not fp.is_file():
@@ -180,12 +192,21 @@ def main():
         sys.exit(1)
     file_name = str(fp.resolve())
 
-    # start webdriver
-    options = webdriver.ChromeOptions()
+    # webdriver setup
+    # options
+    driver_options = webdriver.ChromeOptions()
     if headless:
-        options.add_argument("--headless")
+        driver_options.add_argument("--headless")
 
-    with webdriver.Chrome(options=options) as driver:
+    # auto installer
+    if chromium:
+        chrome_type = ChromeType.CHROMIUM
+    else:
+        chrome_type = ChromeType.GOOGLE
+    driver_path = ChromeDriverManager(chrome_type=chrome_type).install()
+    driver_service = ChromeService(driver_path)
+
+    with webdriver.Chrome(options=driver_options, service=driver_service) as driver:
         driver.implicitly_wait(TIMEOUT)
 
         # load cookies
@@ -207,7 +228,7 @@ def main():
 
         # save cookies
         if do_save_cookies:
-            print("Saving cookies")
+            print("Saving cookies.")
             save_cookies(driver, cookie_path)
 
 
