@@ -19,7 +19,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 # todo: re-implement with saml auth and requests, as alternative to selenium
 
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 
 # timeout for selenium waits, in seconds
 TIMEOUT = 10
