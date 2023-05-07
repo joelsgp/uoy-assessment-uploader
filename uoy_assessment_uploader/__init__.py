@@ -20,7 +20,7 @@ from webdriver_manager.core.utils import ChromeType
 # todo: re-implement with saml auth and requests, as alternative to selenium
 
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 # timeout for selenium waits, in seconds
 TIMEOUT = 10
@@ -60,7 +60,7 @@ def get_parser() -> ArgumentParser:
     # selenium cookies
     parser.add_argument("--cookie-file", type=Path, default=DEFAULT_ARG_COOKIE_FILE)
     parser.add_argument(
-        "--no-save-cookies", dest="do_save_cookies", action="store_false"
+        "--no-save-cookies", dest="save_cookies", action="store_false"
     )
     parser.add_argument(
         "--delete-cookies",
@@ -79,6 +79,20 @@ def get_parser() -> ArgumentParser:
     )
 
     return parser
+
+
+class Args:
+    username: str
+    password: str
+    exam_number: str
+    submit_url: str
+    file: Path
+    dry_run: bool
+    cookie_file: Path
+    save_cookies: bool
+    delete_cookies: bool
+    headless: bool
+    chromium: bool
 
 
 def save_cookies(driver: WebDriver, fp: Path):
@@ -123,7 +137,9 @@ def upload(driver: WebDriver, file_name: str, dry_run: bool):
         input_checkbox.submit()
 
 
-def ensure_details(current: str, prompt: Optional[str] = None, hide: bool = False) -> str:
+def ensure_details(
+    current: str, prompt: Optional[str] = None, hide: bool = False
+) -> str:
     if current is not None:
         return current
 
@@ -151,7 +167,7 @@ def do(
         # username/password login page
         if driver.current_url == URL_LOGIN:
             print("Logging in..")
-            username = ensure_details(username, 'Enter username: ')
+            username = ensure_details(username, "Enter username: ")
             password = ensure_details(password, hide=True)
             login(driver, username, password)
             wait.until(
@@ -160,7 +176,7 @@ def do(
         # exam number login page
         elif driver.current_url == URL_EXAM_NUMBER:
             print("Entering exam number..")
-            exam_number = ensure_details(exam_number, 'Enter exam number: ')
+            exam_number = ensure_details(exam_number, "Enter exam number: ")
             enter_exam_number(driver, exam_number)
             wait.until(ec.url_to_be(submit_url))
         # logged in, upload page
@@ -191,38 +207,27 @@ def resolve_submit_url(submit_url: str) -> str:
 def main():
     # load arguments
     parser = get_parser()
-    args = parser.parse_args()
-
-    username: str = args.username
-    password: str = args.password
-    exam_number: str = args.exam_number
-    submit_url: str = args.submit_url
-    fp: Path = args.file
-    dry_run: bool = args.dry_run
-    cookie_path: Path = args.cookie_file
-    do_save_cookies: bool = args.do_save_cookies
-    delete_cookies: bool = args.delete_cookies
-    headless: bool = args.headless
-    chromium: bool = args.chromium
+    args = Args()
+    parser.parse_args(namespace=args)
 
     # check zip to be uploaded exists
-    if not fp.is_file():
-        print(f"File doesn't exist '{fp}'.")
+    if not args.file.is_file():
+        print(f"File doesn't exist '{args.file}'.")
         sys.exit(1)
-    print(f"Found file '{fp}'.")
-    file_name = str(fp.resolve())
+    print(f"Found file '{args.file}'.")
+    file_name = str(args.file.resolve())
 
     # verify arguments
-    submit_url = resolve_submit_url(submit_url)
+    submit_url = resolve_submit_url(args.submit_url)
 
     # webdriver setup
     # options
     driver_options = webdriver.ChromeOptions()
-    if headless:
+    if args.headless:
         driver_options.add_argument("--headless")
 
     # auto installer
-    if chromium:
+    if args.chromium:
         chrome_type = ChromeType.CHROMIUM
     else:
         chrome_type = ChromeType.GOOGLE
@@ -233,26 +238,26 @@ def main():
         driver.implicitly_wait(TIMEOUT)
 
         # load cookies
-        if delete_cookies:
-            cookie_path.unlink(missing_ok=True)
-        elif do_save_cookies:
-            load_cookies(driver, cookie_path)
+        if args.delete_cookies:
+            args.cookie_file.unlink(missing_ok=True)
+        elif args.save_cookies:
+            load_cookies(driver, args.cookie_file)
 
         # run
         do(
             driver=driver,
             submit_url=submit_url,
-            username=username,
-            password=password,
-            exam_number=exam_number,
+            username=args.username,
+            password=args.password,
+            exam_number=args.exam_number,
             file_name=file_name,
-            dry_run=dry_run,
+            dry_run=args.dry_run,
         )
 
         # save cookies
-        if do_save_cookies:
+        if args.save_cookies:
             print("Saving cookies.")
-            save_cookies(driver, cookie_path)
+            save_cookies(driver, args.cookie_file)
 
 
 if __name__ == "__main__":
