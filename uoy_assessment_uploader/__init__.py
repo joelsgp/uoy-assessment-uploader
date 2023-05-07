@@ -5,6 +5,7 @@ import json
 import sys
 from argparse import ArgumentParser
 from pathlib import Path
+from typing import Optional
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as ChromeService
@@ -16,11 +17,10 @@ from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.core.utils import ChromeType
 
 
-# todo: only demand login details if no cookies present, or when cookies declined by site
 # todo: re-implement with saml auth and requests, as alternative to selenium
 
 
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 
 # timeout for selenium waits, in seconds
 TIMEOUT = 10
@@ -37,20 +37,20 @@ def get_parser() -> ArgumentParser:
     parser = ArgumentParser(description=__doc__)
 
     # core functionality arguments
-    parser.add_argument("-u", "--username", required=True)
-    parser.add_argument(
-        "--password",
-        help="Not recommended to pass this as an argument, for security reasons."
-        " Leave it out and you will be securely prompted to enter it at startup.",
-    )
-    parser.add_argument("-e", "--exam-number", required=True)
-    parser.add_argument("-f", "--file", type=Path, default=DEFAULT_ARG_FILE)
     parser.add_argument(
         "-n",
         "--submit-url",
         required=True,
         help="The specific exam to upload to, e.g. /2021-2/submit/COM00012C/901/A",
     )
+    parser.add_argument("-u", "--username")
+    parser.add_argument(
+        "--password",
+        help="Not recommended to pass this as an argument, for security reasons."
+        " Leave it out and you will be securely prompted to enter it at startup.",
+    )
+    parser.add_argument("-e", "--exam-number")
+    parser.add_argument("-f", "--file", type=Path, default=DEFAULT_ARG_FILE)
     # options
     parser.add_argument(
         "--dry-run",
@@ -123,12 +123,23 @@ def upload(driver: WebDriver, file_name: str, dry_run: bool):
         input_checkbox.submit()
 
 
+def ensure_details(current: str, prompt: Optional[str] = None, hide: bool = False) -> str:
+    if current is not None:
+        return current
+
+    if hide:
+        current = getpass.getpass()
+    else:
+        current = input(prompt)
+    return current
+
+
 def do(
     driver: WebDriver,
     submit_url: str,
-    username: str,
-    password: str,
-    exam_number: str,
+    username: Optional[str],
+    password: Optional[str],
+    exam_number: Optional[str],
     file_name: str,
     dry_run: bool,
 ):
@@ -137,16 +148,22 @@ def do(
     # breaks loop on submit
     while True:
         driver.get(submit_url)
+        # username/password login page
         if driver.current_url == URL_LOGIN:
             print("Logging in..")
+            username = ensure_details(username, 'Enter username: ')
+            password = ensure_details(password, hide=True)
             login(driver, username, password)
             wait.until(
                 ec.any_of(ec.url_to_be(URL_EXAM_NUMBER), ec.url_to_be(submit_url))
             )
+        # exam number login page
         elif driver.current_url == URL_EXAM_NUMBER:
             print("Entering exam number..")
+            exam_number = ensure_details(exam_number, 'Enter exam number: ')
             enter_exam_number(driver, exam_number)
             wait.until(ec.url_to_be(submit_url))
+        # logged in, upload page
         elif driver.current_url == submit_url:
             print("Uploading file...")
             upload(driver, file_name, dry_run)
@@ -196,8 +213,6 @@ def main():
     file_name = str(fp.resolve())
 
     # verify arguments
-    if password is None:
-        password = getpass.getpass()
     submit_url = resolve_submit_url(submit_url)
 
     # webdriver setup
