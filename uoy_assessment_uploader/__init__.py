@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """Tool for automating submitting assessments to the University of York Computer Science department."""
 
 import getpass
@@ -14,8 +12,12 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 
 
+# todo: re-implement with saml auth and requests, as alternative to selenium
+
+
 __version__ = "0.1.0"
 
+# timeout for selenium waits, in seconds
 TIMEOUT = 10
 URL_SUBMIT_BASE = "https://teaching.cs.york.ac.uk/student"
 URL_LOGIN = "https://shib.york.ac.uk/idp/profile/SAML2/Redirect/SSO?execution=e1s1"
@@ -133,6 +135,7 @@ def resolve_submit_url(submit_url: str) -> str:
 
 
 def main():
+    # load arguments
     parser = get_parser()
     args = parser.parse_args()
 
@@ -145,15 +148,20 @@ def main():
     do_save_cookies: bool = args.do_save_cookies
     headless: bool = args.headless
 
+    # todo check fp exists
+
+    # start webdriver
     options = webdriver.ChromeOptions()
     if headless:
         options.add_argument("--headless")
-
     driver = webdriver.Chrome(options=options)
     driver.implicitly_wait(TIMEOUT)
+
+    # load cookies
     if do_save_cookies:
         load_cookies(driver, cookie_path)
 
+    # run
     try:
         do(
             driver=driver,
@@ -166,10 +174,13 @@ def main():
     except Exception:
         raise
     else:
+        # save cookies
         if do_save_cookies:
             print("Saving cookies")
             save_cookies(driver, cookie_path)
 
+    # exit
+    # todo context manager
     input("Press ENTER to close driver:\n")
     driver.close()
 
