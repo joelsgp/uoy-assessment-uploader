@@ -14,7 +14,6 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
-from webdriver_manager.core.utils import ChromeType
 
 
 # todo: re-implement with saml auth and requests, as alternative to selenium
@@ -43,14 +42,22 @@ def get_parser() -> ArgumentParser:
         required=True,
         help="The specific exam to upload to, e.g. /2021-2/submit/COM00012C/901/A",
     )
-    parser.add_argument("-u", "--username")
+    parser.add_argument(
+        "-u", "--username", help="Username for login, not email address, e.g. ab1234"
+    )
     parser.add_argument(
         "--password",
         help="Not recommended to pass this as an argument, for security reasons."
-        " Leave it out and you will be securely prompted to enter it at startup.",
+        " Leave it out and you will be securely prompted to enter it if needed.",
     )
-    parser.add_argument("-e", "--exam-number")
-    parser.add_argument("-f", "--file", type=Path, default=DEFAULT_ARG_FILE)
+    parser.add_argument("-e", "--exam-number", help="e.g. Y1234567")
+    parser.add_argument(
+        "-f",
+        "--file",
+        type=Path,
+        default=DEFAULT_ARG_FILE,
+        help="default: '%(default)s'",
+    )
     # options
     parser.add_argument(
         "--dry-run",
@@ -58,9 +65,17 @@ def get_parser() -> ArgumentParser:
         help="Log in but don't actually upload the file.",
     )
     # selenium cookies
-    parser.add_argument("--cookie-file", type=Path, default=DEFAULT_ARG_COOKIE_FILE)
     parser.add_argument(
-        "--no-save-cookies", dest="save_cookies", action="store_false"
+        "--cookie-file",
+        type=Path,
+        default=DEFAULT_ARG_COOKIE_FILE,
+        help="default: '%(default)s'",
+    )
+    parser.add_argument(
+        "--no-save-cookies",
+        dest="save_cookies",
+        action="store_false",
+        help="Do not save or load session cookies.",
     )
     parser.add_argument(
         "--delete-cookies",
@@ -73,9 +88,6 @@ def get_parser() -> ArgumentParser:
         "--headless",
         action="store_true",
         help="Hide the browser window. Full auto.",
-    )
-    parser.add_argument(
-        "--chromium", action="store_true", help="Use Chromium instead of Google Chrome."
     )
 
     return parser
@@ -92,7 +104,6 @@ class Args:
     save_cookies: bool
     delete_cookies: bool
     headless: bool
-    chromium: bool
 
 
 def save_cookies(driver: WebDriver, fp: Path):
@@ -227,11 +238,7 @@ def main():
         driver_options.add_argument("--headless")
 
     # auto installer
-    if args.chromium:
-        chrome_type = ChromeType.CHROMIUM
-    else:
-        chrome_type = ChromeType.GOOGLE
-    driver_path = ChromeDriverManager(chrome_type=chrome_type).install()
+    driver_path = ChromeDriverManager().install()
     driver_service = ChromeService(driver_path)
 
     with webdriver.Chrome(options=driver_options, service=driver_service) as driver:
@@ -258,6 +265,8 @@ def main():
         if args.save_cookies:
             print("Saving cookies.")
             save_cookies(driver, args.cookie_file)
+
+    print("Finished!")
 
 
 if __name__ == "__main__":

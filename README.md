@@ -1,7 +1,7 @@
 # uoy_assessment_uploader
 
 ## Install
-1. When you have python and pip ready, it's as easy as:
+1. When you have Python and Pip ready, it's as easy as:
    ```shell
    python -m pip install "uoy-assessment-uploader"
    ```
@@ -11,13 +11,14 @@
       ```
 2. You need the Chrome browser installed. Sorry!
     - I need a cookie management feature Firefox doesn't have.
-    - If you have Chromium instead, pass the `--chromium` flag.
+    - Chromium and Ungoogled Chrome should work too.
 
 ## Use
 Like this:
 - ```shell
   python -m uoy_assessment_uploader --help
   ```
+  or
 - ```shell
   uoy-assessment-uploader --help
   ```
@@ -28,9 +29,12 @@ uoy-assessment-uploader --username "ab1234" --exam-number "Y1234567" --submit-ur
 ```
 ```
 Found file 'exam.zip'.
-Password: <PASSWORD HIDDEN>
+
 [WDM] - Downloading: 100%|██████████| 6.98M/6.98M [00:00<00:00, 8.98MB/s]
 Loading cookies.
+Logging in..
+Password: <PASSWORD HIDDEN>
+Entering exam number..
 Uploading file...
 Uploaded successfully.
 Saving cookies.
