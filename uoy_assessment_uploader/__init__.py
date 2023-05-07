@@ -18,7 +18,7 @@ from webdriver_manager.core.utils import ChromeType
 # todo: re-implement with saml auth and requests, as alternative to selenium
 
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 # timeout for selenium waits, in seconds
 TIMEOUT = 10
