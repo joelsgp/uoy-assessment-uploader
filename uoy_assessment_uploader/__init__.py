@@ -187,7 +187,7 @@ def main():
     print(f"Found file '{args.file}'.")
     file_name = str(args.file.resolve())
     # display hash of file
-    with open(file_name, 'rb') as f:
+    with open(file_name, "rb") as f:
         # noinspection PyTypeChecker
         digest = hashlib.file_digest(f, hashlib.md5).hexdigest()
     print(f"MD5 hash of file: {digest}")
