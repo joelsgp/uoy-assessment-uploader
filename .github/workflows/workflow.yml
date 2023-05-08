@@ -1,5 +1,6 @@
 name: Python package
 on:
+    # todo remove push, use only release hook
     push:
         branches:
             - main
@@ -33,3 +34,5 @@ jobs:
                   print-hash: true
                   skip-existing: true
                   verbose: true
+                  # todo switch to Trusted Publisher mode once that's available
+                  password: ${{ secrets.PYPI_API_TOKEN }}
