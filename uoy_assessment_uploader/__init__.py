@@ -1,6 +1,7 @@
 """Tool for automating submitting assessments to the University of York Computer Science department."""
 
 import getpass
+import hashlib
 import sys
 from argparse import ArgumentParser
 from pathlib import Path
@@ -17,7 +18,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 from .selenium import enter_exam_number, load_cookies, login, save_cookies, upload
 
 
-__version__ = "0.2.2"
+__version__ = "0.3.0"
 
 # timeout for selenium waits, in seconds
 TIMEOUT = 10
@@ -177,15 +178,19 @@ def main():
     args = Args()
     parser.parse_args(namespace=args)
 
+    # verify arguments
+    submit_url = resolve_submit_url(args.submit_url)
     # check zip to be uploaded exists
     if not args.file.is_file():
         print(f"File doesn't exist '{args.file}'.")
         sys.exit(1)
     print(f"Found file '{args.file}'.")
     file_name = str(args.file.resolve())
-
-    # verify arguments
-    submit_url = resolve_submit_url(args.submit_url)
+    # display hash of file
+    with open(file_name, 'rb') as f:
+        # noinspection PyTypeChecker
+        digest = hashlib.file_digest(f, hashlib.md5).hexdigest()
+    print(f"MD5 hash of file: {digest}")
 
     # webdriver setup
     # options

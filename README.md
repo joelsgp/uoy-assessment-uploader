@@ -22,14 +22,21 @@ Like this:
 - ```shell
   uoy-assessment-uploader --help
   ```
-  
+
+Once it's submitted, you should receive an email to your uni address with confirmation.
+The email will show you the MD5 hash, like so:
+
+> MD5 hash of file: 97f212cda7e5200a67749cac560a06f4
+
+If this matches the hash shown by the program, you can be certain you successfully uploaded the right file.
+
 ## Example
 ```shell
 uoy-assessment-uploader --username "ab1234" --exam-number "Y1234567" --submit-url "/2021-2/submit/COM00012C/901/A"
 ```
 ```
 Found file 'exam.zip'.
-
+MD5 hash of file: 05086595c7c7c1a962d6eff6872e18c0
 [WDM] - Downloading: 100%|██████████| 6.98M/6.98M [00:00<00:00, 8.98MB/s]
 Loading cookies.
 Logging in..
@@ -38,4 +45,5 @@ Entering exam number..
 Uploading file...
 Uploaded successfully.
 Saving cookies.
+Finished!
 ```
