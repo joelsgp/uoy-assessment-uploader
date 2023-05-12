@@ -7,6 +7,7 @@ from argparse import ArgumentParser
 from pathlib import Path
 from typing import Optional, Sequence
 
+import keyring
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common.by import By
@@ -17,10 +18,6 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 from .selenium import enter_exam_number, load_cookies, login, save_cookies, upload
 
-try:
-    import keyring
-except ModuleNotFoundError:
-    keyring = None
 
 # todo: re-implement with saml auth and requests, as alternative to selenium
 
@@ -138,19 +135,19 @@ def ensure_password(
 ) -> str:
     service_name = f"{NAME}-{which}"
     # get password
-    if password is None and use_keyring and keyring is not None:
+    if password is None and use_keyring:
         password = keyring.get_password(service_name, username)
     if password is None:
         prompt = f"{which}: "
         password = getpass.getpass(prompt)
     # save password to keyring
-    if use_keyring and keyring is not None:
+    if use_keyring:
         keyring.set_password(service_name, username, password)
 
     return password
 
 
-def do(
+def run_selenium(
     driver: WebDriver,
     submit_url: str,
     username: Optional[str],
@@ -247,7 +244,7 @@ def main():
             load_cookies(driver, args.cookie_file)
 
         # run
-        do(
+        run_selenium(
             driver=driver,
             submit_url=submit_url,
             username=args.username,
