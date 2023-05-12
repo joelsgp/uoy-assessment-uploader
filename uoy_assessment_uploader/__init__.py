@@ -17,13 +17,18 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 from .selenium import enter_exam_number, load_cookies, login, save_cookies, upload
 
+try:
+    import keyring
+except ModuleNotFoundError:
+    keyring = None
 
 # todo: re-implement with saml auth and requests, as alternative to selenium
-# todo: keyring support
 
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
+# used for service_name in keyring
+NAME = "uoy-assessment-uploader"
 # timeout for selenium waits, in seconds
 TIMEOUT = 10
 
@@ -67,6 +72,11 @@ def get_parser() -> ArgumentParser:
         action="store_true",
         help="Log in but don't actually upload the file.",
     )
+    parser.add_argument(
+        "--use-keyring",
+        action="store_true",
+        help="Use the keyring service for storing and retrieving password and exam number. keyring must be installed.",
+    )
     # selenium cookies
     parser.add_argument(
         "--cookie-file",
@@ -97,12 +107,13 @@ def get_parser() -> ArgumentParser:
 
 
 class Args:
-    username: str
-    password: str
-    exam_number: str
+    username: Optional[str]
+    password: Optional[str]
+    exam_number: Optional[str]
     submit_url: str
     file: Path
     dry_run: bool
+    use_keyring: bool
     cookie_file: Path
     save_cookies: bool
     delete_cookies: bool
@@ -116,17 +127,27 @@ def parse_args(argv: Sequence[str] = None) -> Args:
     return args
 
 
-def ensure_details(
-    current: str, prompt: Optional[str] = None, hide: bool = False
-) -> str:
-    if current is not None:
-        return current
+def ensure_username(username: Optional[str]) -> str:
+    if username is None:
+        username = input("Username: ")
+    return username
 
-    if hide:
-        current = getpass.getpass()
-    else:
-        current = input(prompt)
-    return current
+
+def ensure_password(
+    password: Optional[str], username: str, which: str, use_keyring: bool
+) -> str:
+    service_name = f"{NAME}-{which}"
+    # get password
+    if password is None and use_keyring and keyring is not None:
+        password = keyring.get_password(service_name, username)
+    if password is None:
+        prompt = f"{which}: "
+        password = getpass.getpass(prompt)
+    # save password to keyring
+    if use_keyring and keyring is not None:
+        keyring.set_password(service_name, username, password)
+
+    return password
 
 
 def do(
@@ -137,6 +158,7 @@ def do(
     exam_number: Optional[str],
     file_name: str,
     dry_run: bool,
+    use_keyring: bool,
 ):
     wait = WebDriverWait(driver, TIMEOUT)
 
@@ -146,8 +168,10 @@ def do(
         # username/password login page
         if driver.current_url == URL_LOGIN:
             print("Logging in..")
-            username = ensure_details(username, "Enter username: ")
-            password = ensure_details(password, hide=True)
+            username = ensure_username(username)
+            password = ensure_password(
+                password, username, which="Password", use_keyring=use_keyring
+            )
             login(driver, username, password)
             wait.until(
                 ec.any_of(ec.url_to_be(URL_EXAM_NUMBER), ec.url_to_be(submit_url))
@@ -155,7 +179,10 @@ def do(
         # exam number login page
         elif driver.current_url == URL_EXAM_NUMBER:
             print("Entering exam number..")
-            exam_number = ensure_details(exam_number, "Enter exam number: ")
+            username = ensure_username(username)
+            exam_number = ensure_password(
+                exam_number, username, which="Exam number", use_keyring=use_keyring
+            )
             enter_exam_number(driver, exam_number)
             wait.until(ec.url_to_be(submit_url))
         # logged in, upload page
@@ -228,6 +255,7 @@ def main():
             exam_number=args.exam_number,
             file_name=file_name,
             dry_run=args.dry_run,
+            use_keyring=args.use_keyring,
         )
 
         # save cookies
