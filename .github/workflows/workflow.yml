@@ -1,9 +1,5 @@
 name: Python package
 on:
-    # todo remove push, use only release hook
-#    push:
-#        branches:
-#            - main
     release:
         types: [published]
 jobs:
