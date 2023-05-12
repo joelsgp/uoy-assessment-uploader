@@ -5,7 +5,7 @@ import hashlib
 import sys
 from argparse import ArgumentParser
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Sequence
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as ChromeService
@@ -16,6 +16,10 @@ from selenium.webdriver.support.wait import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 
 from .selenium import enter_exam_number, load_cookies, login, save_cookies, upload
+
+
+# todo: re-implement with saml auth and requests, as alternative to selenium
+# todo: keyring support
 
 
 __version__ = "0.3.0"
@@ -105,6 +109,13 @@ class Args:
     headless: bool
 
 
+def parse_args(argv: Sequence[str] = None) -> Args:
+    parser = get_parser()
+    args = Args()
+    parser.parse_args(argv, namespace=args)
+    return args
+
+
 def ensure_details(
     current: str, prompt: Optional[str] = None, hide: bool = False
 ) -> str:
@@ -174,10 +185,7 @@ def resolve_submit_url(submit_url: str) -> str:
 
 def main():
     # load arguments
-    parser = get_parser()
-    args = Args()
-    parser.parse_args(namespace=args)
-
+    args = parse_args()
     # verify arguments
     submit_url = resolve_submit_url(args.submit_url)
     # check zip to be uploaded exists
