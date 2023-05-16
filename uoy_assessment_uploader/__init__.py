@@ -10,6 +10,7 @@ from typing import Optional
 
 import keyring
 import requests
+import requests.utils
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as ChromeService
@@ -27,10 +28,12 @@ __version__ = "0.5.0"
 
 # used for service_name in keyring
 NAME = "uoy-assessment-uploader"
+RE_SHIBSESSION = re.compile(r'_shibsession_[0-9a-z]{96}')
 # timeout for selenium waits, in seconds
 TIMEOUT = 10
-
-RE_SHIBSESSION = re.compile(r'_shibsession_[0-9a-z]{96}')
+# should be like "python-requests/x.y.z"
+USER_AGENT_DEFAULT = requests.utils.default_user_agent()
+USER_AGENT = f"{USER_AGENT_DEFAULT} {NAME}/{__version__}"
 
 URL_SUBMIT_BASE = "https://teaching.cs.york.ac.uk/student"
 URL_LOGIN = "https://shib.york.ac.uk/idp/profile/SAML2/Redirect/SSO?execution=e1s1"
@@ -148,7 +151,9 @@ def main():
         cookies.load(ignore_discard=True)
 
     with requests.Session() as session:
+        # session setup
         session.cookies = cookies
+        session.headers.update({"User-Agent": USER_AGENT})
         # run
         run_requests(
             session=session,
