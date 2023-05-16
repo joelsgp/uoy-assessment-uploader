@@ -14,11 +14,13 @@ import requests.utils
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.common.by import By
+from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.support import expected_conditions as ec
+from selenium.webdriver.support.wait import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 
 from .parser import parse_args
-from .selenium import login
-
 
 # todo: re-implement with saml auth and requests, as alternative to selenium
 # todo figure out what it do on fails
@@ -100,7 +102,7 @@ def run_requests(
         upload_assignment(session, token, submit_url, file_path)
 
 
-def selenium_get_shibsession(username: str, password: str) -> dict[str, str]:
+def selenium_get_shibsession(submit_url: str, username: str, password: str) -> dict[str, str]:
     # webdriver setup
     # options
     driver_options = webdriver.ChromeOptions()
@@ -109,7 +111,13 @@ def selenium_get_shibsession(username: str, password: str) -> dict[str, str]:
     driver_service = ChromeService(driver_path)
     with webdriver.Chrome(options=driver_options, service=driver_service) as driver:
         driver.implicitly_wait(TIMEOUT)
+        wait = WebDriverWait(driver, TIMEOUT)
+
+        driver.get(submit_url)
         login(driver, username, password)
+        wait.until(
+            ec.any_of(ec.url_to_be(URL_EXAM_NUMBER), ec.url_to_be(submit_url))
+        )
         cookies = driver.get_cookies()
 
     for c in cookies:
@@ -176,3 +184,12 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+def login(driver: WebDriver, username: str, password: str):
+    input_username = driver.find_element(By.ID, "username")
+    input_username.send_keys(username)
+    input_password = driver.find_element(By.ID, "password")
+    input_password.send_keys(password)
+    input_button = driver.find_element(By.NAME, "_eventId_proceed")
+    input_button.click()

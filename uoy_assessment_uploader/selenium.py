@@ -8,7 +8,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 
-from uoy_assessment_uploader import TIMEOUT, URL_EXAM_NUMBER, URL_LOGIN, ensure_password, ensure_username
+from uoy_assessment_uploader import TIMEOUT, URL_EXAM_NUMBER, URL_LOGIN, ensure_password, ensure_username, login
 
 
 def save_cookies(driver: WebDriver, fp: Path):
@@ -27,15 +27,6 @@ def load_cookies(driver: webdriver.Chrome, fp: Path):
         print("Loading cookies.")
         for c in cookies:
             driver.execute_cdp_cmd("Network.setCookie", c)
-
-
-def login(driver: WebDriver, username: str, password: str):
-    input_username = driver.find_element(By.ID, "username")
-    input_username.send_keys(username)
-    input_password = driver.find_element(By.ID, "password")
-    input_password.send_keys(password)
-    input_button = driver.find_element(By.NAME, "_eventId_proceed")
-    input_button.click()
 
 
 def enter_exam_number(driver: WebDriver, exam_number: str):
