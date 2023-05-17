@@ -24,6 +24,8 @@ from .parser import parse_args
 
 # todo: re-implement with saml auth and requests, as alternative to selenium
 # todo figure out what it do on fails
+# todo make flowchart ot figure this confusion out
+# todo pyinstaller
 
 
 __version__ = "0.5.0"
@@ -40,6 +42,15 @@ USER_AGENT = f"{USER_AGENT_DEFAULT} {NAME}/{__version__}"
 URL_SUBMIT_BASE = "https://teaching.cs.york.ac.uk/student"
 URL_LOGIN = "https://shib.york.ac.uk/idp/profile/SAML2/Redirect/SSO?execution=e1s1"
 URL_EXAM_NUMBER = "https://teaching.cs.york.ac.uk/student/confirm-exam-number"
+
+
+def login_exam_number(session: requests.Session, token: str, exam_number: str) -> requests.Response:
+    params = {
+        "_token": token,
+        "examNumber": exam_number,
+    }
+    r = session.post(URL_EXAM_NUMBER, params=params)
+    return r
 
 
 def get_token(session: requests.Session, submit_url: str) -> str:
@@ -156,12 +167,19 @@ def main():
     if args.delete_cookies:
         args.cookie_file.unlink(missing_ok=True)
     elif args.save_cookies:
-        cookies.load(ignore_discard=True)
+        try:
+            cookies.load(ignore_discard=True)
+        except FileNotFoundError:
+            pass
 
     with requests.Session() as session:
         # session setup
+        # todo fix workaround
         session.cookies = cookies
         session.headers.update({"User-Agent": USER_AGENT})
+        # session.verify = "teaching-cs-york-ac-uk.pem"
+        # session.verify = "GEANTOVRSACA4.crt"
+        session.verify = False
         # run
         run_requests(
             session=session,
