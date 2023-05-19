@@ -8,7 +8,14 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
 
-from uoy_assessment_uploader import TIMEOUT, URL_EXAM_NUMBER, URL_LOGIN, ensure_password, ensure_username, login
+from uoy_assessment_uploader import (
+    TIMEOUT,
+    URL_EXAM_NUMBER,
+    URL_LOGIN,
+    ensure_password,
+    ensure_username,
+    login,
+)
 
 
 def save_cookies(driver: WebDriver, fp: Path):

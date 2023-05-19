@@ -3,7 +3,29 @@ from pathlib import Path
 from typing import Optional, Sequence
 
 DEFAULT_ARG_FILE = "exam.zip"
+# todo change
 DEFAULT_ARG_COOKIE_FILE = ".cookies.json"
+
+
+class Args:
+    username: Optional[str]
+    password: Optional[str]
+    exam_number: Optional[str]
+    submit_url: str
+    file: Path
+    dry_run: bool
+    use_keyring: bool
+    delete_from_keyring: bool
+    cookie_file: Path
+    save_cookies: bool
+    delete_cookies: bool
+
+
+def parse_args(argv: Sequence[str] = None) -> Args:
+    parser = get_parser()
+    args = Args()
+    parser.parse_args(argv, namespace=args)
+    return args
 
 
 def get_parser() -> ArgumentParser:
@@ -38,10 +60,17 @@ def get_parser() -> ArgumentParser:
         action="store_true",
         help="Log in but don't actually upload the file.",
     )
+    # keyring store
     parser.add_argument(
-        "--use-keyring",
+        "--no-use-keyring",
+        action="store_false",
+        dest="use_keyring",
+        help="DON'T use the keyring service for storing and retrieving the password and exam number.",
+    )
+    parser.add_argument(
+        "--delete-from-keyring",
         action="store_true",
-        help="Use the keyring service for storing and retrieving password and exam number. keyring must be installed.",
+        help="Delete saved password and exam number from the keyring, then exit.",
     )
     # selenium cookies
     parser.add_argument(
@@ -59,27 +88,7 @@ def get_parser() -> ArgumentParser:
     parser.add_argument(
         "--delete-cookies",
         action="store_true",
-        help="Before starting, delete previous login cookies (if they exist).",
+        help="Delete cookie file, then exit.",
     )
 
     return parser
-
-
-class Args:
-    username: Optional[str]
-    password: Optional[str]
-    exam_number: Optional[str]
-    submit_url: str
-    file: Path
-    dry_run: bool
-    use_keyring: bool
-    cookie_file: Path
-    save_cookies: bool
-    delete_cookies: bool
-
-
-def parse_args(argv: Sequence[str] = None) -> Args:
-    parser = get_parser()
-    args = Args()
-    parser.parse_args(argv, namespace=args)
-    return args
