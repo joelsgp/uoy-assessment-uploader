@@ -2,6 +2,7 @@
 
 import getpass
 import hashlib
+import importlib.resources
 import re
 import sys
 from http.cookiejar import LWPCookieJar
@@ -23,20 +24,23 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 from .parser import parse_args
 
-
 __version__ = "0.5.0"
 
-# used for service_name in keyring
-NAME = "uoy-assessment-uploader"
+# used for service_name in keyring, and prompts
 NAME_PASSWORD = "password"
 NAME_EXAM_NUMBER = "exam-number"
+
+# see here:
+# https://stackoverflow.com/questions/27068163/python-requests-not-handling-missing-intermediate-certificate-only-from-one-mach
+# https://pypi.org/project/aia/
+PEM_FILE = "teaching-cs-york-ac-uk-chain.pem"
 
 RE_SHIBSESSION = re.compile(r"_shibsession_[0-9a-z]{96}")
 # timeout for selenium waits, in seconds
 TIMEOUT = 10
 # should be like "python-requests/x.y.z"
 USER_AGENT_DEFAULT = requests.utils.default_user_agent()
-USER_AGENT = f"{USER_AGENT_DEFAULT} {NAME}/{__version__}"
+USER_AGENT = f"{USER_AGENT_DEFAULT} {__name__}/{__version__}"
 
 URL_SUBMIT_BASE = "https://teaching.cs.york.ac.uk/student"
 URL_LOGIN = "https://shib.york.ac.uk/idp/profile/SAML2/Redirect/SSO?execution=e1s1"
@@ -80,7 +84,7 @@ def ensure_username(username: Optional[str]) -> str:
 def ensure_password(
     password: Optional[str], username: str, which: str, use_keyring: bool
 ) -> str:
-    service_name = f"{NAME}-{which}"
+    service_name = f"{__name__}-{which}"
     # try keyring
     if password is None and use_keyring:
         password = keyring.get_password(service_name, username)
@@ -102,7 +106,7 @@ def ensure_password(
 
 def keyring_wipe(username: str):
     for which in (NAME_PASSWORD, NAME_EXAM_NUMBER):
-        service_name = f"{NAME}-{which}"
+        service_name = f"{__name__}-{which}"
         print(f"{which} - deleting from keyring")
         try:
             keyring.delete_password(service_name, username)
@@ -131,6 +135,7 @@ def run_requests(
     4. Upload the actual file.
     """
     r = session.get(submit_url)
+    r.raise_for_status()
     if r.url == submit_url:
         token = get_token(r)
     elif r.url == URL_LOGIN:
@@ -145,20 +150,21 @@ def run_requests(
         shibsession_cookie = selenium_get_shibsession(submit_url, username, password)
         requests.utils.add_dict_to_cookiejar(session.cookies, shibsession_cookie)
         r = session.get(URL_EXAM_NUMBER)
+        r.raise_for_status()
         token = get_token(r)
         login_exam_number(session, token, exam_number)
     elif r.url == URL_EXAM_NUMBER:
         token = get_token(r)
         login_exam_number(session, token, exam_number)
     else:
-        raise RuntimeError(
-            f"Unexpected redirect '{r.url}' with status code '{r.status_code}'"
-        )
+        raise RuntimeError(f"Unexpected redirect '{r.url}'")
+
     print("Uploading file...")
     if dry_run:
         print("Skipped actual upload.")
     else:
-        upload_assignment(session, token, submit_url, file_path)
+        r = upload_assignment(session, token, submit_url, file_path)
+        r.raise_for_status()
 
 
 def selenium_get_shibsession(
@@ -237,21 +243,19 @@ def main():
         # session setup
         session.cookies = cookies
         session.headers.update({"User-Agent": USER_AGENT})
-        # todo fix workaround
-        # session.verify = "teaching-cs-york-ac-uk.pem"
-        # session.verify = "GEANTOVRSACA4.crt"
-        session.verify = False
-        # run
-        run_requests(
-            session=session,
-            submit_url=submit_url,
-            username=args.username,
-            password=args.password,
-            exam_number=args.exam_number,
-            file_path=file_path,
-            dry_run=args.dry_run,
-            use_keyring=args.use_keyring,
-        )
+
+        with importlib.resources.path(__name__, PEM_FILE) as pem_path:
+            session.verify = pem_path
+            run_requests(
+                session=session,
+                submit_url=submit_url,
+                username=args.username,
+                password=args.password,
+                exam_number=args.exam_number,
+                file_path=file_path,
+                dry_run=args.dry_run,
+                use_keyring=args.use_keyring,
+            )
 
     # save cookies
     if args.save_cookies:
