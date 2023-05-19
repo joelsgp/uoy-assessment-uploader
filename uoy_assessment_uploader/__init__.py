@@ -136,9 +136,8 @@ def run_requests(
     """
     r = session.get(submit_url)
     r.raise_for_status()
-    if r.url == submit_url:
-        token = get_token(r)
-    elif r.url == URL_LOGIN:
+
+    if r.url == URL_LOGIN:
         username = ensure_username(username)
         password = ensure_password(
             password, username, which=NAME_PASSWORD, use_keyring=use_keyring
@@ -156,6 +155,8 @@ def run_requests(
     elif r.url == URL_EXAM_NUMBER:
         token = get_token(r)
         login_exam_number(session, token, exam_number)
+    elif r.url == submit_url:
+        token = get_token(r)
     else:
         raise RuntimeError(f"Unexpected redirect '{r.url}'")
 
