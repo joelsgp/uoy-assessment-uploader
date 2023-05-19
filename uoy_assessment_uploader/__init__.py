@@ -56,7 +56,7 @@ def login_exam_number(
 
 def get_token(response: requests.Response) -> str:
     soup = BeautifulSoup(response.text, features="html.parser")
-    tag = soup.find("meta", name="csrf-token")
+    tag = soup.find("meta", attrs={"name": "csrf-token"})
     token = tag.attrs["content"]
     return token
 
@@ -142,11 +142,9 @@ def run_requests(
             exam_number, username, which=NAME_EXAM_NUMBER, use_keyring=use_keyring
         )
 
-        shibsession_dict = selenium_get_shibsession(submit_url, username, password)
-        shibsession_key = next(iter(shibsession_dict.keys()))
-        shibsession_val = shibsession_dict[shibsession_key]
-        session.cookies.set(shibsession_key, shibsession_val)
-        r = session.get(submit_url)
+        shibsession_cookie = selenium_get_shibsession(submit_url, username, password)
+        requests.utils.add_dict_to_cookiejar(session.cookies, shibsession_cookie)
+        r = session.get(URL_EXAM_NUMBER)
         token = get_token(r)
         login_exam_number(session, token, exam_number)
     elif r.url == URL_EXAM_NUMBER:
@@ -182,9 +180,8 @@ def selenium_get_shibsession(
         cookies = driver.get_cookies()
 
     for c in cookies:
-        key = next(iter(c.keys()))
-        if RE_SHIBSESSION.fullmatch(key):
-            return c
+        if RE_SHIBSESSION.fullmatch(c["name"]):
+            return {c["name"]: c["value"]}
 
 
 def resolve_submit_url(submit_url: str) -> str:
