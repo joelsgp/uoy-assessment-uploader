@@ -3,8 +3,7 @@ from pathlib import Path
 from typing import Optional, Sequence
 
 DEFAULT_ARG_FILE = "exam.zip"
-# todo change
-DEFAULT_ARG_COOKIE_FILE = ".cookies.json"
+DEFAULT_ARG_COOKIE_FILE = "cookies.txt"
 
 
 class Args:
