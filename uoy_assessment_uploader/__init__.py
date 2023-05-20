@@ -14,15 +14,12 @@ import keyring.errors
 import requests
 import requests.utils
 from bs4 import BeautifulSoup
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service as ChromeService
-from selenium.webdriver.common.by import By
-from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.support import expected_conditions as ec
-from selenium.webdriver.support.wait import WebDriverWait
-from webdriver_manager.chrome import ChromeDriverManager
 
-from .parser import parse_args
+
+from .argument_parser import parse_args
+
+
+# todo saml auth
 
 __version__ = "0.5.0"
 
@@ -45,6 +42,10 @@ USER_AGENT = f"{USER_AGENT_DEFAULT} {__name__}/{__version__}"
 URL_SUBMIT_BASE = "https://teaching.cs.york.ac.uk/student"
 URL_LOGIN = "https://shib.york.ac.uk/idp/profile/SAML2/Redirect/SSO?execution=e1s1"
 URL_EXAM_NUMBER = "https://teaching.cs.york.ac.uk/student/confirm-exam-number"
+
+
+def login_saml(session: requests.Session, username: str, password: str):
+    pass
 
 
 def login_exam_number(
@@ -81,27 +82,52 @@ def ensure_username(username: Optional[str]) -> str:
     return username
 
 
-def ensure_password(
-    password: Optional[str], username: str, which: str, use_keyring: bool
+def ensure_credential(
+    username: str,
+    credential: Optional[str],
+    use_keyring: bool,
+    keyring_name: str,
+    prompt: str,
 ) -> str:
-    service_name = f"{__name__}-{which}"
+    service_name = f"{__name__}-{keyring_name}"
     # try keyring
-    if password is None and use_keyring:
-        password = keyring.get_password(service_name, username)
-        if password is None:
-            print(f"{which} - not in keyring")
+    if credential is None and use_keyring:
+        credential = keyring.get_password(service_name, username)
+        if credential is None:
+            print(f"{keyring_name} - not in keyring")
         else:
-            print(f"{which} - got from keyring")
+            print(f"{keyring_name} - got from keyring")
     # fall back to getpass
-    if password is None:
-        prompt = f"{which}: "
-        password = getpass.getpass(prompt)
+    if credential is None:
+        credential = getpass.getpass(prompt)
     # save password to keyring
     if use_keyring:
-        keyring.set_password(service_name, username, password)
-        print(f"{which} - saved to keyring")
+        keyring.set_password(service_name, username, credential)
+        print(f"{keyring_name} - saved to keyring")
 
-    return password
+    return credential
+
+
+def ensure_password(username: str, password: Optional[str], use_keyring: bool) -> str:
+    return ensure_credential(
+        username,
+        password,
+        use_keyring=use_keyring,
+        keyring_name="password",
+        prompt="Password: ",
+    )
+
+
+def ensure_exam_number(
+    username: str, exam_number: Optional[str], use_keyring: bool
+) -> str:
+    return ensure_credential(
+        username,
+        exam_number,
+        use_keyring=use_keyring,
+        keyring_name="exam-number",
+        prompt="Exam number: ",
+    )
 
 
 def keyring_wipe(username: str):
@@ -136,27 +162,19 @@ def run_requests(
     """
     r = session.get(submit_url)
     r.raise_for_status()
+    token = get_token(r)
 
     if r.url == URL_LOGIN:
         username = ensure_username(username)
-        password = ensure_password(
-            password, username, which=NAME_PASSWORD, use_keyring=use_keyring
-        )
-        exam_number = ensure_password(
-            exam_number, username, which=NAME_EXAM_NUMBER, use_keyring=use_keyring
-        )
-
-        shibsession_cookie = selenium_get_shibsession(submit_url, username, password)
-        requests.utils.add_dict_to_cookiejar(session.cookies, shibsession_cookie)
-        r = session.get(URL_EXAM_NUMBER)
-        r.raise_for_status()
-        token = get_token(r)
+        password = ensure_password(password, username, use_keyring=use_keyring)
+        exam_number = ensure_exam_number(exam_number, username, use_keyring=use_keyring)
+        login_saml(session, username, password)
         login_exam_number(session, token, exam_number)
     elif r.url == URL_EXAM_NUMBER:
-        token = get_token(r)
+        exam_number = ensure_exam_number(exam_number, username, use_keyring=use_keyring)
         login_exam_number(session, token, exam_number)
     elif r.url == submit_url:
-        token = get_token(r)
+        pass
     else:
         raise RuntimeError(f"Unexpected redirect '{r.url}'")
 
@@ -166,29 +184,6 @@ def run_requests(
     else:
         r = upload_assignment(session, token, submit_url, file_path)
         r.raise_for_status()
-
-
-def selenium_get_shibsession(
-    submit_url: str, username: str, password: str
-) -> dict[str, str]:
-    # webdriver setup
-    # options
-    driver_options = webdriver.ChromeOptions()
-    # auto installer
-    driver_path = ChromeDriverManager().install()
-    driver_service = ChromeService(driver_path)
-    with webdriver.Chrome(options=driver_options, service=driver_service) as driver:
-        driver.implicitly_wait(TIMEOUT)
-        wait = WebDriverWait(driver, TIMEOUT)
-
-        driver.get(submit_url)
-        login(driver, username, password)
-        wait.until(ec.any_of(ec.url_to_be(URL_EXAM_NUMBER), ec.url_to_be(submit_url)))
-        cookies = driver.get_cookies()
-
-    for c in cookies:
-        if RE_SHIBSESSION.fullmatch(c["name"]):
-            return {c["name"]: c["value"]}
 
 
 def resolve_submit_url(submit_url: str) -> str:
@@ -268,12 +263,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-def login(driver: WebDriver, username: str, password: str):
-    input_username = driver.find_element(By.ID, "username")
-    input_username.send_keys(username)
-    input_password = driver.find_element(By.ID, "password")
-    input_password.send_keys(password)
-    input_button = driver.find_element(By.NAME, "_eventId_proceed")
-    input_button.click()
