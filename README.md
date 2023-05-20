@@ -1,5 +1,8 @@
 # uoy_assessment_uploader
 
+**If you have an open exam, help me test the new and improved version!! See here: https://github.com/joelsgp/uoy-assessment-uploader/pull/1**
+
+
 ## Install
 1. When you have Python and Pip ready, it's as easy as:
    ```shell
