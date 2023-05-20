@@ -8,7 +8,7 @@ jobs:
         name: Upload release to PyPI
         runs-on: ubuntu-latest
         environment:
-            name: release
+            name: pypi
             url: https://pypi.org/p/uoy-assessment-uploader
         permissions:
             id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
@@ -30,5 +30,3 @@ jobs:
                   print-hash: true
                   skip-existing: true
                   verbose: true
-                  # todo switch to Trusted Publisher mode once that's available
-                  password: ${{ secrets.PYPI_API_TOKEN }}
