@@ -39,7 +39,10 @@ USER_AGENT = f"{USER_AGENT_DEFAULT} {__name__}/{__version__}"
 def get_token(response: Response) -> str:
     soup = BeautifulSoup(response.text, features="html.parser")
     tag = soup.find("meta", attrs={"name": "csrf-token"})
-    token = tag["content"]
+    try:
+        token = tag["content"]
+    except TypeError as error:
+        raise RuntimeError("Unable to get csrf-token from page!") from error
     return token
 
 
@@ -178,16 +181,20 @@ def run_requests(
     token = get_token(r)
 
     if r.url == URL_LOGIN:
+        print("Logging in..")
         username = ensure_username(username)
         password = ensure_password(password, username, use_keyring=use_keyring)
         exam_number = ensure_exam_number(exam_number, username, use_keyring=use_keyring)
 
         login_saml(session, username, password, token)
         login_exam_number(session, token, exam_number)
+        print("Logged in.")
     elif r.url == URL_EXAM_NUMBER:
+        print("Entering exam number..")
         exam_number = ensure_exam_number(exam_number, username, use_keyring=use_keyring)
 
         login_exam_number(session, token, exam_number)
+        print("Entered exam number.")
     elif r.url == submit_url:
         pass
     else:
@@ -199,6 +206,7 @@ def run_requests(
     else:
         r = upload_assignment(session, token, submit_url, file_path)
         r.raise_for_status()
+        print("Uploaded fine.")
 
 
 def resolve_submit_url(submit_url: str) -> str:
@@ -228,11 +236,7 @@ def main():
     # verify arguments
     submit_url = resolve_submit_url(args.submit_url)
     # check zip to be uploaded exists
-    try:
-        file_path = args.file.resolve()
-    except FileNotFoundError:
-        print(f"File doesn't exist '{args.file}'.")
-        sys.exit(1)
+    file_path = args.file.resolve()
     print(f"Found file '{file_path}'.")
     # display hash of file
     with open(file_path, "rb") as f:
