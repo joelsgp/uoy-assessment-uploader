@@ -48,10 +48,10 @@ def get_token(response: Response) -> str:
     return token
 
 
-def login_saml(session: Session, username: str, password: str, token: str) -> Response:
+def login_saml(session: Session, csrf_token: str, username: str, password: str) -> Response:
     # get saml response from SSO
     payload = {
-        "csrf_token": token,
+        "csrf_token": csrf_token,
         "j_username": username,
         "j_password": password,
         "_eventId_proceed": "",
@@ -74,9 +74,9 @@ def login_saml(session: Session, username: str, password: str, token: str) -> Re
     return r
 
 
-def login_exam_number(session: Session, token: str, exam_number: str) -> Response:
+def login_exam_number(session: Session, csrf_token: str, exam_number: str) -> Response:
     params = {
-        "_token": token,
+        "_token": csrf_token,
         "examNumber": exam_number,
     }
     r = session.post(URL_EXAM_NUMBER, params=params)
@@ -191,7 +191,9 @@ def run_requests(
         password = ensure_password(username, password, use_keyring=use_keyring)
         exam_number = ensure_exam_number(username, exam_number, use_keyring=use_keyring)
 
-        login_saml(session, username, password, token)
+        r = login_saml(session, username, password, token)
+        # the token changes after login
+        token = get_token(r)
         login_exam_number(session, token, exam_number)
         print("Logged in.")
     elif r.url == URL_EXAM_NUMBER:
@@ -255,7 +257,7 @@ def main():
         print(f"Loading cookie file '{args.cookie_file}'")
         try:
             cookies.load(ignore_discard=True)
-            print("Loaded cookies")
+            print("Loaded cookies.")
         except FileNotFoundError:
             print("No cookies to load!")
 
