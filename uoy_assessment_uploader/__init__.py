@@ -11,9 +11,9 @@ from typing import Optional
 
 import keyring
 import keyring.errors
-import requests
 import requests.utils
 from bs4 import BeautifulSoup
+from requests import Response, Session
 
 from .argument_parser import parse_args
 
@@ -36,31 +36,52 @@ USER_AGENT_DEFAULT = requests.utils.default_user_agent()
 USER_AGENT = f"{USER_AGENT_DEFAULT} {__name__}/{__version__}"
 
 
-def login_saml(session: requests.Session, username: str, password: str):
-    pass
+def get_token(response: Response) -> str:
+    soup = BeautifulSoup(response.text, features="html.parser")
+    tag = soup.find("meta", attrs={"name": "csrf-token"})
+    token = tag["content"]
+    return token
 
 
-def login_exam_number(
-    session: requests.Session, token: str, exam_number: str
-) -> requests.Response:
+def login_saml(session: Session, username: str, password: str, token: str) -> Response:
+    # get saml response from SSO
+    params = {
+        "csrf_token_": token,
+        "j_username": username,
+        "j_password": password,
+        "_eventId_proceed": "",
+    }
+    r = session.post(URL_LOGIN, params=params)
+    r.raise_for_status()
+
+    # parse saml response
+    soup = BeautifulSoup(r.text, features="html.parser")
+    form = soup.find("form")
+    action_url = form.attrs["action"]
+    form_inputs = form.find_all("input", attrs={"type": "hidden"})
+    params = {}
+    for fi in form_inputs:
+        params[fi["name"]] = fi["value"]
+
+    # send saml response back to teaching portal
+    r = session.post(action_url, params=params)
+    r.raise_for_status()
+    return r
+
+
+def login_exam_number(session: Session, token: str, exam_number: str) -> Response:
     params = {
         "_token": token,
         "examNumber": exam_number,
     }
     r = session.post(URL_EXAM_NUMBER, params=params)
+    r.raise_for_status()
     return r
 
 
-def get_token(response: requests.Response) -> str:
-    soup = BeautifulSoup(response.text, features="html.parser")
-    tag = soup.find("meta", attrs={"name": "csrf-token"})
-    token = tag.attrs["content"]
-    return token
-
-
 def upload_assignment(
-    session: requests.Session, csrf_token: str, submit_url: str, fp: Path
-) -> requests.Response:
+    session: Session, csrf_token: str, submit_url: str, fp: Path
+) -> Response:
     with open(fp, "rb") as file:
         file_dict = {"file": (fp.name, file)}
         form_data = {"_token": csrf_token}
@@ -134,7 +155,7 @@ def keyring_wipe(username: str):
 
 
 def run_requests(
-    session: requests.Session,
+    session: Session,
     submit_url: str,
     username: Optional[str],
     password: Optional[str],
@@ -160,10 +181,12 @@ def run_requests(
         username = ensure_username(username)
         password = ensure_password(password, username, use_keyring=use_keyring)
         exam_number = ensure_exam_number(exam_number, username, use_keyring=use_keyring)
-        login_saml(session, username, password)
+
+        login_saml(session, username, password, token)
         login_exam_number(session, token, exam_number)
     elif r.url == URL_EXAM_NUMBER:
         exam_number = ensure_exam_number(exam_number, username, use_keyring=use_keyring)
+
         login_exam_number(session, token, exam_number)
     elif r.url == submit_url:
         pass
@@ -227,7 +250,7 @@ def main():
         except FileNotFoundError:
             print("No cookies to load!")
 
-    with requests.Session() as session:
+    with Session() as session:
         # session setup
         session.cookies = cookies
         session.headers.update({"User-Agent": USER_AGENT})
