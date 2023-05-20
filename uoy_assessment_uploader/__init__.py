@@ -20,7 +20,7 @@ from .credentials import (
 )
 
 
-__version__ = "0.5.0"
+__version__ = "0.5.1"
 
 
 # used for service_name in keyring calls
@@ -118,7 +118,7 @@ def run_requests(
     """
     r = session.get(submit_url)
     r.raise_for_status()
-    token = get_token(r)
+    csrf_token = get_token(r)
 
     if r.url == URL_LOGIN:
         print("Logging in..")
@@ -126,16 +126,21 @@ def run_requests(
         password = ensure_password(username, password, use_keyring=use_keyring)
         exam_number = ensure_exam_number(username, exam_number, use_keyring=use_keyring)
 
-        r = login_saml(session, username, password, token)
+        r = login_saml(
+            session,
+            csrf_token,
+            username,
+            password,
+        )
         # the token changes after login
-        token = get_token(r)
-        login_exam_number(session, token, exam_number)
+        csrf_token = get_token(r)
+        login_exam_number(session, csrf_token, exam_number)
         print("Logged in.")
     elif r.url == URL_EXAM_NUMBER:
         print("Entering exam number..")
         exam_number = ensure_exam_number(username, exam_number, use_keyring=use_keyring)
 
-        login_exam_number(session, token, exam_number)
+        login_exam_number(session, csrf_token, exam_number)
         print("Entered exam number.")
     elif r.url == submit_url:
         pass
@@ -146,7 +151,7 @@ def run_requests(
     if dry_run:
         print("Skipped actual upload.")
     else:
-        r = upload_assignment(session, token, submit_url, file_path)
+        r = upload_assignment(session, csrf_token, submit_url, file_path)
         r.raise_for_status()
         print("Uploaded fine.")
 
