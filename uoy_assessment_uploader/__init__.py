@@ -15,33 +15,25 @@ import requests
 import requests.utils
 from bs4 import BeautifulSoup
 
-
 from .argument_parser import parse_args
-
-
-# todo saml auth
 
 __version__ = "0.5.0"
 
-# used for service_name in keyring, and prompts
-NAME_PASSWORD = "password"
-NAME_EXAM_NUMBER = "exam-number"
 
+# used for service_name in keyring calls
+KEYRING_NAME_PASSWORD = "password"
+KEYRING_NAME_EXAM_NUMBER = "exam-number"
 # see here:
 # https://stackoverflow.com/questions/27068163/python-requests-not-handling-missing-intermediate-certificate-only-from-one-mach
 # https://pypi.org/project/aia/
 PEM_FILE = "teaching-cs-york-ac-uk-chain.pem"
-
-RE_SHIBSESSION = re.compile(r"_shibsession_[0-9a-z]{96}")
-# timeout for selenium waits, in seconds
-TIMEOUT = 10
-# should be like "python-requests/x.y.z"
-USER_AGENT_DEFAULT = requests.utils.default_user_agent()
-USER_AGENT = f"{USER_AGENT_DEFAULT} {__name__}/{__version__}"
-
+RE_SHIBSESSION_COOKIE_NAME = re.compile(r"_shibsession_[0-9a-z]{96}")
 URL_SUBMIT_BASE = "https://teaching.cs.york.ac.uk/student"
 URL_LOGIN = "https://shib.york.ac.uk/idp/profile/SAML2/Redirect/SSO?execution=e1s1"
 URL_EXAM_NUMBER = "https://teaching.cs.york.ac.uk/student/confirm-exam-number"
+# should be like "python-requests/x.y.z"
+USER_AGENT_DEFAULT = requests.utils.default_user_agent()
+USER_AGENT = f"{USER_AGENT_DEFAULT} {__name__}/{__version__}"
 
 
 def login_saml(session: requests.Session, username: str, password: str):
@@ -113,7 +105,7 @@ def ensure_password(username: str, password: Optional[str], use_keyring: bool) -
         username,
         password,
         use_keyring=use_keyring,
-        keyring_name="password",
+        keyring_name=KEYRING_NAME_PASSWORD,
         prompt="Password: ",
     )
 
@@ -125,13 +117,13 @@ def ensure_exam_number(
         username,
         exam_number,
         use_keyring=use_keyring,
-        keyring_name="exam-number",
+        keyring_name=KEYRING_NAME_EXAM_NUMBER,
         prompt="Exam number: ",
     )
 
 
 def keyring_wipe(username: str):
-    for which in (NAME_PASSWORD, NAME_EXAM_NUMBER):
+    for which in (KEYRING_NAME_PASSWORD, KEYRING_NAME_EXAM_NUMBER):
         service_name = f"{__name__}-{which}"
         print(f"{which} - deleting from keyring")
         try:
