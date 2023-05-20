@@ -167,8 +167,13 @@ def main():
     if args.delete_cookies:
         exit_now = True
         print(f"Deleting cookie file '{args.cookie_file}'")
-        args.cookie_file.unlink(missing_ok=True)
+        try:
+            args.cookie_file.unlink()
+            print("Deleted cookie file.")
+        except FileNotFoundError:
+            print("Cookie file doesn't exist.")
     if args.delete_from_keyring:
+        print("Deleting password and exam number from keyring.")
         exit_now = True
         args.username = ensure_username(args.username)
         delete_from_keyring(args.username)
