@@ -1,28 +1,29 @@
 """Tool for automating submitting assessments to the University of York Computer Science department."""
 
-import getpass
 import hashlib
 import importlib.resources
 import re
-import sys
 from http.cookiejar import LWPCookieJar
 from pathlib import Path
 from typing import Optional
 
-import keyring
-import keyring.errors
 import requests.utils
 from bs4 import BeautifulSoup
 from requests import Response, Session
 
 from .argument_parser import parse_args
+from .credentials import (
+    delete_from_keyring,
+    ensure_exam_number,
+    ensure_password,
+    ensure_username,
+)
+
 
 __version__ = "0.5.0"
 
 
 # used for service_name in keyring calls
-KEYRING_NAME_PASSWORD = "password"
-KEYRING_NAME_EXAM_NUMBER = "exam-number"
 # see here:
 # https://stackoverflow.com/questions/27068163/python-requests-not-handling-missing-intermediate-certificate-only-from-one-mach
 # https://pypi.org/project/aia/
@@ -48,7 +49,9 @@ def get_token(response: Response) -> str:
     return token
 
 
-def login_saml(session: Session, csrf_token: str, username: str, password: str) -> Response:
+def login_saml(
+    session: Session, csrf_token: str, username: str, password: str
+) -> Response:
     # get saml response from SSO
     payload = {
         "csrf_token": csrf_token,
@@ -92,74 +95,6 @@ def upload_assignment(
         form_data = {"_token": csrf_token}
         r = session.post(url=submit_url, data=form_data, files=file_dict)
     return r
-
-
-def ensure_username(username: Optional[str]) -> str:
-    if username is None:
-        username = input("Username: ")
-    return username
-
-
-def ensure_credential(
-    username: str,
-    credential: Optional[str],
-    use_keyring: bool,
-    keyring_name: str,
-    prompt: str,
-) -> str:
-    service_name = f"{__name__}-{keyring_name}"
-    # try keyring
-    got_from_keyring = False
-    if use_keyring and credential is None:
-        credential = keyring.get_password(service_name, username)
-        if credential is None:
-            print(f"{keyring_name} - not in keyring")
-            got_from_keyring = False
-        else:
-            print(f"{keyring_name} - got from keyring")
-            got_from_keyring = True
-    # fall back to getpass
-    if credential is None:
-        credential = getpass.getpass(prompt)
-    # save password to keyring
-    if use_keyring and not got_from_keyring:
-        keyring.set_password(service_name, username, credential)
-        print(f"{keyring_name} - saved to keyring")
-
-    return credential
-
-
-def ensure_password(username: str, password: Optional[str], use_keyring: bool) -> str:
-    return ensure_credential(
-        username,
-        password,
-        use_keyring=use_keyring,
-        keyring_name=KEYRING_NAME_PASSWORD,
-        prompt="Password: ",
-    )
-
-
-def ensure_exam_number(
-    username: str, exam_number: Optional[str], use_keyring: bool
-) -> str:
-    return ensure_credential(
-        username,
-        exam_number,
-        use_keyring=use_keyring,
-        keyring_name=KEYRING_NAME_EXAM_NUMBER,
-        prompt="Exam number: ",
-    )
-
-
-def keyring_wipe(username: str):
-    for keyring_name in (KEYRING_NAME_PASSWORD, KEYRING_NAME_EXAM_NUMBER):
-        service_name = f"{__name__}-{keyring_name}"
-        print(f"{keyring_name} - deleting from keyring")
-        try:
-            keyring.delete_password(service_name, username)
-            print(f"{keyring_name} - deleted from keyring")
-        except keyring.errors.PasswordDeleteError:
-            print(f"{keyring_name} - not in keyring")
 
 
 def run_requests(
@@ -236,9 +171,9 @@ def main():
     if args.delete_from_keyring:
         exit_now = True
         args.username = ensure_username(args.username)
-        keyring_wipe(args.username)
+        delete_from_keyring(args.username)
     if exit_now:
-        sys.exit()
+        return
 
     # verify arguments
     submit_url = resolve_submit_url(args.submit_url)
