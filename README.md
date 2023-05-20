@@ -12,9 +12,7 @@
       ```shell
       python -m pip install "git+https://github.com/joelsgp/uoy-assessment-uploader"
       ```
-2. You need the Chrome browser installed. Sorry!
-    - I need a cookie management feature Firefox doesn't have.
-    - Chromium and Ungoogled Chrome should work too.
+2. As shrimple as that
 
 ## Use
 Like this:
@@ -40,13 +38,15 @@ uoy-assessment-uploader --username "ab1234" --exam-number "Y1234567" --submit-ur
 ```
 Found file 'exam.zip'.
 MD5 hash of file: 05086595c7c7c1a962d6eff6872e18c0
-[WDM] - Downloading: 100%|██████████| 6.98M/6.98M [00:00<00:00, 8.98MB/s]
-Loading cookies.
+Loading cookie file 'cookies.txt'
+No cookies to load!
 Logging in..
 Password: <PASSWORD HIDDEN>
+Logged in.
 Entering exam number..
+Entered exam number.
 Uploading file...
-Uploaded successfully.
-Saving cookies.
+Uploaded fine.
+Saved cookies.
 Finished!
 ```

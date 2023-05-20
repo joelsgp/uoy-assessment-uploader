@@ -1,203 +1,154 @@
 """Tool for automating submitting assessments to the University of York Computer Science department."""
 
-import getpass
 import hashlib
-import sys
-from argparse import ArgumentParser
+import importlib.resources
+import re
+from http.cookiejar import LWPCookieJar
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Optional
 
-import keyring
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service as ChromeService
-from selenium.webdriver.common.by import By
-from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.support import expected_conditions as ec
-from selenium.webdriver.support.wait import WebDriverWait
-from webdriver_manager.chrome import ChromeDriverManager
+import requests.utils
+from bs4 import BeautifulSoup
+from requests import Response, Session
 
-from .selenium import enter_exam_number, load_cookies, login, save_cookies, upload
-
-
-# todo: re-implement with saml auth and requests, as alternative to selenium
+from .argument_parser import parse_args
+from .credentials import (
+    delete_from_keyring,
+    ensure_exam_number,
+    ensure_password,
+    ensure_username,
+)
 
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
-# used for service_name in keyring
-NAME = "uoy-assessment-uploader"
-# timeout for selenium waits, in seconds
-TIMEOUT = 10
 
-DEFAULT_ARG_FILE = "exam.zip"
-DEFAULT_ARG_COOKIE_FILE = ".cookies.json"
-
+# used for service_name in keyring calls
+# see here:
+# https://stackoverflow.com/questions/27068163/python-requests-not-handling-missing-intermediate-certificate-only-from-one-mach
+# https://pypi.org/project/aia/
+PEM_FILE = "teaching-cs-york-ac-uk-chain.pem"
+RE_SHIBSESSION_COOKIE_NAME = re.compile(r"_shibsession_[0-9a-z]{96}")
 URL_SUBMIT_BASE = "https://teaching.cs.york.ac.uk/student"
 URL_LOGIN = "https://shib.york.ac.uk/idp/profile/SAML2/Redirect/SSO?execution=e1s1"
 URL_EXAM_NUMBER = "https://teaching.cs.york.ac.uk/student/confirm-exam-number"
+# should be like "python-requests/x.y.z"
+USER_AGENT_DEFAULT = requests.utils.default_user_agent()
+USER_AGENT = f"{USER_AGENT_DEFAULT} {__name__}/{__version__}"
 
 
-def get_parser() -> ArgumentParser:
-    parser = ArgumentParser(description=__doc__)
+def get_token(response: Response) -> str:
+    soup = BeautifulSoup(response.text, features="html.parser")
+    if response.url == URL_LOGIN:
+        tag = soup.find("input", attrs={"type": "hidden", "name": "csrf_token"})
+        token = tag["value"]
+    else:
+        tag = soup.find("meta", attrs={"name": "csrf-token"})
+        token = tag["content"]
 
-    # core functionality arguments
-    parser.add_argument(
-        "-n",
-        "--submit-url",
-        required=True,
-        help="The specific exam to upload to, e.g. /2021-2/submit/COM00012C/901/A",
-    )
-    parser.add_argument(
-        "-u", "--username", help="Username for login, not email address, e.g. ab1234"
-    )
-    parser.add_argument(
-        "--password",
-        help="Not recommended to pass this as an argument, for security reasons."
-        " Leave it out and you will be securely prompted to enter it if needed.",
-    )
-    parser.add_argument("-e", "--exam-number", help="e.g. Y1234567")
-    parser.add_argument(
-        "-f",
-        "--file",
-        type=Path,
-        default=DEFAULT_ARG_FILE,
-        help="default: '%(default)s'",
-    )
-    # options
-    parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="Log in but don't actually upload the file.",
-    )
-    parser.add_argument(
-        "--use-keyring",
-        action="store_true",
-        help="Use the keyring service for storing and retrieving password and exam number. keyring must be installed.",
-    )
-    # selenium cookies
-    parser.add_argument(
-        "--cookie-file",
-        type=Path,
-        default=DEFAULT_ARG_COOKIE_FILE,
-        help="default: '%(default)s'",
-    )
-    parser.add_argument(
-        "--no-save-cookies",
-        dest="save_cookies",
-        action="store_false",
-        help="Do not save or load session cookies.",
-    )
-    parser.add_argument(
-        "--delete-cookies",
-        action="store_true",
-        help="Before starting, delete previous login cookies (if they exist).",
-    )
-    # other selenium options
-    parser.add_argument(
-        "-q",
-        "--headless",
-        action="store_true",
-        help="Hide the browser window. Full auto.",
-    )
-
-    return parser
+    return token
 
 
-class Args:
-    username: Optional[str]
-    password: Optional[str]
-    exam_number: Optional[str]
-    submit_url: str
-    file: Path
-    dry_run: bool
-    use_keyring: bool
-    cookie_file: Path
-    save_cookies: bool
-    delete_cookies: bool
-    headless: bool
+def login_saml(
+    session: Session, csrf_token: str, username: str, password: str
+) -> Response:
+    # get saml response from SSO
+    payload = {
+        "csrf_token": csrf_token,
+        "j_username": username,
+        "j_password": password,
+        "_eventId_proceed": "",
+    }
+    r = session.post(URL_LOGIN, data=payload)
+    r.raise_for_status()
+
+    # parse saml response
+    soup = BeautifulSoup(r.text, features="html.parser")
+    form = soup.find("form")
+    action_url = form.attrs["action"]
+    form_inputs = form.find_all("input", attrs={"type": "hidden"})
+    payload = {}
+    for fi in form_inputs:
+        payload[fi["name"]] = fi["value"]
+
+    # send saml response back to teaching portal
+    r = session.post(action_url, data=payload)
+    r.raise_for_status()
+    return r
 
 
-def parse_args(argv: Sequence[str] = None) -> Args:
-    parser = get_parser()
-    args = Args()
-    parser.parse_args(argv, namespace=args)
-    return args
+def login_exam_number(session: Session, csrf_token: str, exam_number: str) -> Response:
+    params = {
+        "_token": csrf_token,
+        "examNumber": exam_number,
+    }
+    r = session.post(URL_EXAM_NUMBER, params=params)
+    r.raise_for_status()
+    return r
 
 
-def ensure_username(username: Optional[str]) -> str:
-    if username is None:
-        username = input("Username: ")
-    return username
+def upload_assignment(
+    session: Session, csrf_token: str, submit_url: str, fp: Path
+) -> Response:
+    with open(fp, "rb") as file:
+        file_dict = {"file": (fp.name, file)}
+        form_data = {"_token": csrf_token}
+        r = session.post(url=submit_url, data=form_data, files=file_dict)
+    return r
 
 
-def ensure_password(
-    password: Optional[str], username: str, which: str, use_keyring: bool
-) -> str:
-    service_name = f"{NAME}-{which}"
-    # get password
-    if password is None and use_keyring:
-        password = keyring.get_password(service_name, username)
-    if password is None:
-        prompt = f"{which}: "
-        password = getpass.getpass(prompt)
-    # save password to keyring
-    if use_keyring:
-        keyring.set_password(service_name, username, password)
-
-    return password
-
-
-def run_selenium(
-    driver: WebDriver,
+def run_requests(
+    session: Session,
     submit_url: str,
     username: Optional[str],
     password: Optional[str],
     exam_number: Optional[str],
-    file_name: str,
+    file_path: Path,
     dry_run: bool,
     use_keyring: bool,
 ):
-    wait = WebDriverWait(driver, TIMEOUT)
+    """Run the actual upload process, using direct http requests.
 
-    # breaks loop on submit
-    while True:
-        driver.get(submit_url)
-        # username/password login page
-        if driver.current_url == URL_LOGIN:
-            print("Logging in..")
-            username = ensure_username(username)
-            password = ensure_password(
-                password, username, which="Password", use_keyring=use_keyring
-            )
-            login(driver, username, password)
-            wait.until(
-                ec.any_of(ec.url_to_be(URL_EXAM_NUMBER), ec.url_to_be(submit_url))
-            )
-        # exam number login page
-        elif driver.current_url == URL_EXAM_NUMBER:
-            print("Entering exam number..")
-            username = ensure_username(username)
-            exam_number = ensure_password(
-                exam_number, username, which="Exam number", use_keyring=use_keyring
-            )
-            enter_exam_number(driver, exam_number)
-            wait.until(ec.url_to_be(submit_url))
-        # logged in, upload page
-        elif driver.current_url == submit_url:
-            print("Uploading file...")
-            upload(driver, file_name, dry_run)
-            if dry_run:
-                print("Skipped actual upload.")
-            else:
-                wait.until(
-                    ec.text_to_be_present_in_element(
-                        [By.CLASS_NAME, "alert-success"], "File submitted successfully."
-                    )
-                )
-                print("Uploaded successfully.")
-            break
-        else:
-            raise Exception("bruh")
+    Login process:
+    1. Request the submit page.
+    2. If login is requested, enter username and password with selenium. Get the shibsession cookie.
+    3. Retrieve the csrf-token needed alongside the shibsession token for the next steps.
+    3. If exam number is requested, submit exam number.
+    4. Upload the actual file.
+    """
+    r = session.get(submit_url)
+    r.raise_for_status()
+    token = get_token(r)
+
+    if r.url == URL_LOGIN:
+        print("Logging in..")
+        username = ensure_username(username)
+        password = ensure_password(username, password, use_keyring=use_keyring)
+        exam_number = ensure_exam_number(username, exam_number, use_keyring=use_keyring)
+
+        r = login_saml(session, username, password, token)
+        # the token changes after login
+        token = get_token(r)
+        login_exam_number(session, token, exam_number)
+        print("Logged in.")
+    elif r.url == URL_EXAM_NUMBER:
+        print("Entering exam number..")
+        exam_number = ensure_exam_number(username, exam_number, use_keyring=use_keyring)
+
+        login_exam_number(session, token, exam_number)
+        print("Entered exam number.")
+    elif r.url == submit_url:
+        pass
+    else:
+        raise RuntimeError(f"Unexpected redirect '{r.url}'")
+
+    print("Uploading file...")
+    if dry_run:
+        print("Skipped actual upload.")
+    else:
+        r = upload_assignment(session, token, submit_url, file_path)
+        r.raise_for_status()
+        print("Uploaded fine.")
 
 
 def resolve_submit_url(submit_url: str) -> str:
@@ -210,55 +161,68 @@ def resolve_submit_url(submit_url: str) -> str:
 def main():
     # load arguments
     args = parse_args()
+
+    # alternate operations
+    exit_now = False
+    if args.delete_cookies:
+        exit_now = True
+        print(f"Deleting cookie file '{args.cookie_file}'")
+        try:
+            args.cookie_file.unlink()
+            print("Deleted cookie file.")
+        except FileNotFoundError:
+            print("Cookie file doesn't exist.")
+    if args.delete_from_keyring:
+        print("Deleting password and exam number from keyring.")
+        exit_now = True
+        args.username = ensure_username(args.username)
+        delete_from_keyring(args.username)
+    if exit_now:
+        return
+
     # verify arguments
     submit_url = resolve_submit_url(args.submit_url)
     # check zip to be uploaded exists
-    if not args.file.is_file():
-        print(f"File doesn't exist '{args.file}'.")
-        sys.exit(1)
-    print(f"Found file '{args.file}'.")
-    file_name = str(args.file.resolve())
+    file_path = args.file.resolve()
+    print(f"Found file '{file_path}'.")
     # display hash of file
-    with open(file_name, "rb") as f:
+    with open(file_path, "rb") as f:
         # noinspection PyTypeChecker
         digest = hashlib.file_digest(f, hashlib.md5).hexdigest()
     print(f"MD5 hash of file: {digest}")
 
-    # webdriver setup
-    # options
-    driver_options = webdriver.ChromeOptions()
-    if args.headless:
-        driver_options.add_argument("--headless")
+    # load cookies
+    cookies = LWPCookieJar(args.cookie_file)
+    if args.save_cookies:
+        print(f"Loading cookie file '{args.cookie_file}'")
+        try:
+            cookies.load(ignore_discard=True)
+            print("Loaded cookies.")
+        except FileNotFoundError:
+            print("No cookies to load!")
 
-    # auto installer
-    driver_path = ChromeDriverManager().install()
-    driver_service = ChromeService(driver_path)
+    with Session() as session:
+        # session setup
+        session.cookies = cookies
+        session.headers.update({"User-Agent": USER_AGENT})
 
-    with webdriver.Chrome(options=driver_options, service=driver_service) as driver:
-        driver.implicitly_wait(TIMEOUT)
+        with importlib.resources.path(__name__, PEM_FILE) as pem_path:
+            session.verify = pem_path
+            run_requests(
+                session=session,
+                submit_url=submit_url,
+                username=args.username,
+                password=args.password,
+                exam_number=args.exam_number,
+                file_path=file_path,
+                dry_run=args.dry_run,
+                use_keyring=args.use_keyring,
+            )
 
-        # load cookies
-        if args.delete_cookies:
-            args.cookie_file.unlink(missing_ok=True)
-        elif args.save_cookies:
-            load_cookies(driver, args.cookie_file)
-
-        # run
-        run_selenium(
-            driver=driver,
-            submit_url=submit_url,
-            username=args.username,
-            password=args.password,
-            exam_number=args.exam_number,
-            file_name=file_name,
-            dry_run=args.dry_run,
-            use_keyring=args.use_keyring,
-        )
-
-        # save cookies
-        if args.save_cookies:
-            print("Saving cookies.")
-            save_cookies(driver, args.cookie_file)
+    # save cookies
+    if args.save_cookies:
+        cookies.save(ignore_discard=True)
+        print("Saved cookies.")
 
     print("Finished!")
 

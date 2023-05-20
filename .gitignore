@@ -1,4 +1,6 @@
-*.json
+# cookie store files
+*.txt
+# zip files to upload
 *.zip
 
 
