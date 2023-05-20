@@ -38,23 +38,25 @@ USER_AGENT = f"{USER_AGENT_DEFAULT} {__name__}/{__version__}"
 
 def get_token(response: Response) -> str:
     soup = BeautifulSoup(response.text, features="html.parser")
-    tag = soup.find("meta", attrs={"name": "csrf-token"})
-    try:
+    if response.url == URL_LOGIN:
+        tag = soup.find("input", attrs={"type": "hidden", "name": "csrf_token"})
+        token = tag["value"]
+    else:
+        tag = soup.find("meta", attrs={"name": "csrf-token"})
         token = tag["content"]
-    except TypeError as error:
-        raise RuntimeError("Unable to get csrf-token from page!") from error
+
     return token
 
 
 def login_saml(session: Session, username: str, password: str, token: str) -> Response:
     # get saml response from SSO
-    params = {
-        "csrf_token_": token,
+    payload = {
+        "csrf_token": token,
         "j_username": username,
         "j_password": password,
         "_eventId_proceed": "",
     }
-    r = session.post(URL_LOGIN, params=params)
+    r = session.post(URL_LOGIN, data=payload)
     r.raise_for_status()
 
     # parse saml response
@@ -62,12 +64,12 @@ def login_saml(session: Session, username: str, password: str, token: str) -> Re
     form = soup.find("form")
     action_url = form.attrs["action"]
     form_inputs = form.find_all("input", attrs={"type": "hidden"})
-    params = {}
+    payload = {}
     for fi in form_inputs:
-        params[fi["name"]] = fi["value"]
+        payload[fi["name"]] = fi["value"]
 
     # send saml response back to teaching portal
-    r = session.post(action_url, params=params)
+    r = session.post(action_url, data=payload)
     r.raise_for_status()
     return r
 
@@ -107,17 +109,20 @@ def ensure_credential(
 ) -> str:
     service_name = f"{__name__}-{keyring_name}"
     # try keyring
-    if credential is None and use_keyring:
+    got_from_keyring = False
+    if use_keyring and credential is None:
         credential = keyring.get_password(service_name, username)
         if credential is None:
             print(f"{keyring_name} - not in keyring")
+            got_from_keyring = False
         else:
             print(f"{keyring_name} - got from keyring")
+            got_from_keyring = True
     # fall back to getpass
     if credential is None:
         credential = getpass.getpass(prompt)
     # save password to keyring
-    if use_keyring:
+    if use_keyring and not got_from_keyring:
         keyring.set_password(service_name, username, credential)
         print(f"{keyring_name} - saved to keyring")
 
@@ -147,14 +152,14 @@ def ensure_exam_number(
 
 
 def keyring_wipe(username: str):
-    for which in (KEYRING_NAME_PASSWORD, KEYRING_NAME_EXAM_NUMBER):
-        service_name = f"{__name__}-{which}"
-        print(f"{which} - deleting from keyring")
+    for keyring_name in (KEYRING_NAME_PASSWORD, KEYRING_NAME_EXAM_NUMBER):
+        service_name = f"{__name__}-{keyring_name}"
+        print(f"{keyring_name} - deleting from keyring")
         try:
             keyring.delete_password(service_name, username)
-            print(f"{which} - deleted from keyring")
+            print(f"{keyring_name} - deleted from keyring")
         except keyring.errors.PasswordDeleteError:
-            print(f"{which} - not in keyring")
+            print(f"{keyring_name} - not in keyring")
 
 
 def run_requests(
@@ -183,15 +188,15 @@ def run_requests(
     if r.url == URL_LOGIN:
         print("Logging in..")
         username = ensure_username(username)
-        password = ensure_password(password, username, use_keyring=use_keyring)
-        exam_number = ensure_exam_number(exam_number, username, use_keyring=use_keyring)
+        password = ensure_password(username, password, use_keyring=use_keyring)
+        exam_number = ensure_exam_number(username, exam_number, use_keyring=use_keyring)
 
         login_saml(session, username, password, token)
         login_exam_number(session, token, exam_number)
         print("Logged in.")
     elif r.url == URL_EXAM_NUMBER:
         print("Entering exam number..")
-        exam_number = ensure_exam_number(exam_number, username, use_keyring=use_keyring)
+        exam_number = ensure_exam_number(username, exam_number, use_keyring=use_keyring)
 
         login_exam_number(session, token, exam_number)
         print("Entered exam number.")
