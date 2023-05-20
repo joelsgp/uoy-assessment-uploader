@@ -1,7 +1,8 @@
 # uoy_assessment_uploader
 
-**If you have an open exam, help me test the new and improved version!! See here: https://github.com/joelsgp/uoy-assessment-uploader/pull/1**
+PyPI page: https://pypi.org/project/uoy-assessment-uploader/
 
+**If you have an open exam, help me test the new and improved version!! See here: https://github.com/joelsgp/uoy-assessment-uploader/pull/1**
 
 ## Install
 1. When you have Python and Pip ready, it's as easy as:
@@ -35,6 +36,7 @@ If this matches the hash shown by the program, you can be certain you successful
 ```shell
 uoy-assessment-uploader --username "ab1234" --exam-number "Y1234567" --submit-url "/2021-2/submit/COM00012C/901/A"
 ```
+
 ```
 Found file 'exam.zip'.
 MD5 hash of file: 05086595c7c7c1a962d6eff6872e18c0
