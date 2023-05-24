@@ -9,11 +9,18 @@ PyPI page: https://pypi.org/project/uoy-assessment-uploader/
    ```shell
    python -m pip install "uoy-assessment-uploader"
    ```
-   - or, directly from the repo:
-      ```shell
-      python -m pip install "git+https://github.com/joelsgp/uoy-assessment-uploader"
-      ```
 2. As shrimple as that
+
+### Alternative install
+- You can also install it directly from the repo with pip:
+    ```shell
+    python -m pip install "git+https://github.com/joelsgp/uoy-assessment-uploader.git"
+    ```
+
+- Or on an alpm (Arch) Linux system you can get it from the AUR at https://aur.archlinux.org/packages/uoy-assessment-uploader.
+    ```shell
+    paru uoy-assessment-uploader
+    ```
 
 ## Use
 Like this:
