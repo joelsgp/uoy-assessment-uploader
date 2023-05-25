@@ -9,6 +9,8 @@ keyring = "~=23.13.1"
 requests = "~=2.30.0"
 
 [dev-packages]
+build = "*"
+flit = "*"
 
 [requires]
 python_version = "3.11"
