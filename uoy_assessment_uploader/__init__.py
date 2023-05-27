@@ -20,7 +20,7 @@ from .credentials import (
 )
 
 
-__version__ = "0.5.1"
+__version__ = "0.5.2"
 
 
 # used for service_name in keyring calls
@@ -133,14 +133,16 @@ def run_requests(
             username,
             password,
         )
+        print("Logged in.")
+
+        print("Entering exam number..")
         # the token changes after login
         csrf_token = get_token(r)
         login_exam_number(session, csrf_token, exam_number)
-        print("Logged in.")
+        print("Entered exam number.")
     elif r.url == URL_EXAM_NUMBER:
         print("Entering exam number..")
         exam_number = ensure_exam_number(username, exam_number, use_keyring=use_keyring)
-
         login_exam_number(session, csrf_token, exam_number)
         print("Entered exam number.")
     elif r.url == submit_url:
