@@ -53,12 +53,14 @@ def get_parser() -> ArgumentParser:
         default=DEFAULT_ARG_FILE,
         help="default: '%(default)s'",
     )
+
     # options
     parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Log in but don't actually upload the file.",
     )
+
     # keyring store
     parser.add_argument(
         "--no-use-keyring",
@@ -71,7 +73,8 @@ def get_parser() -> ArgumentParser:
         action="store_true",
         help="Delete saved password and exam number from the keyring, then exit.",
     )
-    # selenium cookies
+
+    # requests cookie jar file
     parser.add_argument(
         "--cookie-file",
         type=Path,

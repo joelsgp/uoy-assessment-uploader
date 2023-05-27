@@ -110,10 +110,11 @@ def run_requests(
     """Run the actual upload process, using direct http requests.
 
     Login process:
+    0. A requests Session is used to save the cookies between http calls.
     1. Request the submit page.
-    2. If login is requested, enter username and password with selenium. Get the shibsession cookie.
-    3. Retrieve the csrf-token needed alongside the shibsession token for the next steps.
-    3. If exam number is requested, submit exam number.
+    2. Get the csrf-token from the response.
+    3a. If login is needed, follow the SAML auth process with requests, then submit the exam number.
+    3b. If only the exam number is needed, submit the exam number.
     4. Upload the actual file.
     """
     r = session.get(submit_url)
