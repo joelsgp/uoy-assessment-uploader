@@ -10,6 +10,8 @@ Welcome to uoy_assessment_uploader's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   api
+
 
 
 Indices and tables
@@ -18,10 +20,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
-
-.. autosummary::
-   :recursive:
-   :toctree: generated
-
-   uoy_assessment_uploader
