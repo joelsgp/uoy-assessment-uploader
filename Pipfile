@@ -10,7 +10,6 @@ requests = "~=2.30.0"
 
 [dev-packages]
 build = "*"
-flit = "*"
 sphinx = "*"
 
 [requires]

@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "5df5ddca658dc3323683ffd489e1ad6eb935054f940bf97817b53ae55016af9e"
+            "sha256": "04b4c78fe843ace1bd0c09507814428d975917d7e1d2309a68041a57f0f35fba"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -426,22 +426,6 @@
             "markers": "python_version >= '3.7'",
             "version": "==0.20.1"
         },
-        "flit": {
-            "hashes": [
-                "sha256:076c3aaba5ac24cf0ad3251f910900d95a08218e6bcb26f21fef1036cc4679ca",
-                "sha256:d75edf5eb324da20d53570a6a6f87f51e606eee8384925cd66a90611140844c7"
-            ],
-            "index": "pypi",
-            "version": "==3.9.0"
-        },
-        "flit-core": {
-            "hashes": [
-                "sha256:72ad266176c4a3fcfab5f2930d76896059851240570ce9a98733b658cb786eba",
-                "sha256:7aada352fb0c7f5538c4fafeddf314d3a6a92ee8e2b1de70482329e42de70301"
-            ],
-            "markers": "python_version >= '3.6'",
-            "version": "==3.9.0"
-        },
         "idna": {
             "hashes": [
                 "sha256:814f528e8dead7d329833b91c5faa87d60bf71824cd12a7530b5526063d02cb4",
@@ -616,14 +600,6 @@
             ],
             "markers": "python_version >= '3.5'",
             "version": "==1.1.5"
-        },
-        "tomli-w": {
-            "hashes": [
-                "sha256:9f2a07e8be30a0729e533ec968016807069991ae2fd921a78d42f429ae5f4463",
-                "sha256:f463434305e0336248cac9c2dc8076b707d8a12d019dd349f5c1e382dd1ae1b9"
-            ],
-            "markers": "python_version >= '3.7'",
-            "version": "==1.0.0"
         },
         "urllib3": {
             "hashes": [
