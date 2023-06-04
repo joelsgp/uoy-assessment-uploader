@@ -3,6 +3,15 @@
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
+import sys
+from pathlib import Path
+
+
+cwd = Path.cwd().resolve()
+root = cwd.parents[1]
+path = str(root)
+sys.path.insert(0, path)
+
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
@@ -16,6 +25,7 @@ release = "0.5.2"
 
 extensions = [
     "sphinx.ext.autodoc",
+    "sphinx.ext.viewcode",
 ]
 
 # templates_path = ["_templates"]
