@@ -214,7 +214,9 @@ def main():
         session.cookies = cookies
         session.headers.update({"User-Agent": USER_AGENT})
 
-        with importlib.resources.path(__name__, PEM_FILE) as pem_path:
+        files = importlib.resources.files(__package__)
+        pem_traversable = files.joinpath(PEM_FILE)
+        with importlib.resources.as_file(pem_traversable) as pem_path:
             session.verify = pem_path
             run_requests(
                 session=session,
