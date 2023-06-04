@@ -1,6 +1,6 @@
 """Helper functions for parsing command line arguments."""
 
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 from pathlib import Path
 from typing import Optional, Sequence
 
@@ -11,7 +11,7 @@ DEFAULT_ARG_COOKIE_FILE = "cookies.txt"
 # todo subclass ArgumentParser instead of using helper functions?
 
 
-class Args:
+class Args(Namespace):
     """Type-hinted namespace to use with :meth:`ArgumentParser.parse_args`."""
 
     username: Optional[str]
@@ -33,8 +33,10 @@ def parse_args(argv: Sequence[str] = None) -> Args:
     Wrapper to return a type-hinted :class:`Args` namespace,
     rather than the default untyped :class:`argparse.Namespace`.
 
-    :param argv: list of command line arguments to parser, or None to use :var:`sys.argv` by default.
-    :return: namespace with attributes parsed by :meth:`ArgumentParser.parse_args` from the argument sequence
+    :param argv: list of command line arguments to parse,
+        or None to use :attr:`sys.argv` by default.
+    :return: namespace with attributes parsed by :meth:`ArgumentParser.parse_args`
+        from the argument sequence
     """
     parser = get_parser()
     args = Args()
@@ -46,7 +48,7 @@ def get_parser() -> ArgumentParser:
     """Construct argument parser, add arguments for this script, and return it.
 
     Constants:
-        :var:`__doc__` the module docstring is used for the parser's description.
+        :data:`__doc__` the module docstring is used for the parser's description.
         :const:`DEFAULT_ARG_FILE` Path object to use by default for :option:`--file`.
         :const:`DEFAULT_ARG_COOKIE_FILE` Path object to use by default for :option:`--cookie-file`.
 
@@ -90,7 +92,10 @@ def get_parser() -> ArgumentParser:
         "--no-use-keyring",
         action="store_false",
         dest="use_keyring",
-        help="DON'T use the keyring service for storing and retrieving the password and exam number.",
+        help=(
+            "DON'T use the keyring service"
+            "for storing and retrieving the password and exam number."
+        ),
     )
     parser.add_argument(
         "--delete-from-keyring",

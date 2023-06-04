@@ -1,7 +1,8 @@
 """Tool for automating submitting assessments to the University of York Computer Science department.
 
 Files:
-    ``teaching-cs-york-ac-uk-chain.pem`` is used as :attr:`requests.Session.verify` due to CA issues.
+    ``teaching-cs-york-ac-uk-chain.pem`` is used as :attr:`requests.Session.verify`,
+    due to CA issues.
     See the comments on :const:`PEM_FILE`
 """
 
@@ -67,11 +68,14 @@ def login_saml(
 ) -> Response:
     """Login to the Teaching Portal using SSO (SAML Single Sign-On) using POST.
 
-    :param session: the HTTP session to make requests with and persist cookies onto
-    :param csrf_token: the CS department token to send with the login request, from :func:`get_token`
+    :param session: the HTTP session
+        to make requests with and persist cookies onto
+    :param csrf_token: the CS department token to send with the login request,
+        from :func:`get_token`
     :param username: username from :option:`--username` or :func:`credentials.ensure_username`,
         e.g. ``ab1234``
-    :param password: password from :option:`--password`, or, more securely, :func:`credentials.ensure_password`
+    :param password: password from :option:`--password`, or,
+        more securely, :func:`credentials.ensure_password`
     :return: the HTTP response object from the login request, although this is not important,
         as the key part is the cookies which are attached to the session.
     """
@@ -82,41 +86,45 @@ def login_saml(
         "j_password": password,
         "_eventId_proceed": "",
     }
-    r = session.post(URL_LOGIN, data=payload)
-    r.raise_for_status()
+    response = session.post(URL_LOGIN, data=payload)
+    response.raise_for_status()
 
     # parse saml response
-    soup = BeautifulSoup(r.text, features="html.parser")
+    soup = BeautifulSoup(response.text, features="html.parser")
     form = soup.find("form")
     action_url = form.attrs["action"]
     form_inputs = form.find_all("input", attrs={"type": "hidden"})
     payload = {}
-    for fi in form_inputs:
-        payload[fi["name"]] = fi["value"]
+    for element in form_inputs:
+        payload[element["name"]] = element["value"]
 
     # send saml response back to teaching portal
-    r = session.post(action_url, data=payload)
-    r.raise_for_status()
-    return r
+    response = session.post(action_url, data=payload)
+    response.raise_for_status()
+    return response
 
 
 def login_exam_number(session: Session, csrf_token: str, exam_number: str) -> Response:
     """Secondary login to the Teaching Portal, sending the exam number credential using POST.
 
-    :param session: the HTTP session to make requests with and persist cookies onto
-    :param csrf_token: the CS department token to send with the login request, from :func:`get_token`
-    :param exam_number: exam number from :option:`--exam-number` or :func:`credentials.ensure_exam_number`,
+    :param session: the HTTP session
+        to make requests with and persist cookies onto
+    :param csrf_token: the CS department token to send with the login request,
+        from :func:`get_token`
+    :param exam_number: exam number
+        from :option:`--exam-number` or :func:`credentials.ensure_exam_number`,
         e.g. Y1234567
     :return: the HTTP response object from the login request, although this is not important,
-        as the key part is the cookies which are attached to the session (same as :func:`login_saml`).
+        as the key part is the cookies which are attached to the session
+        (same as :func:`login_saml`).
     """
     params = {
         "_token": csrf_token,
         "examNumber": exam_number,
     }
-    r = session.post(URL_EXAM_NUMBER, params=params)
-    r.raise_for_status()
-    return r
+    response = session.post(URL_EXAM_NUMBER, params=params)
+    response.raise_for_status()
+    return response
 
 
 def upload_assignment(
@@ -124,8 +132,10 @@ def upload_assignment(
 ) -> Response:
     """Upload the completed exam file to the Teaching Portal using POST.
 
-    :param session: the HTTP session to make requests with and persist cookies onto
-    :param csrf_token: the CS department token to send with the login request, from :func:`get_token`
+    :param session: the HTTP session
+        to make requests with and persist cookies onto
+    :param csrf_token: the CS department token to send with the login request,
+        from :func:`get_token`
     :param submit_url: the url to submit to, passed verbatim to :meth:`session.post`
         e.g. https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A
     :param file_path: file path to pass to the ``files`` parameter of :meth:`session.post`,
@@ -135,8 +145,8 @@ def upload_assignment(
     with open(file_path, "rb") as file:
         file_dict = {"file": (file_path.name, file)}
         form_data = {"_token": csrf_token}
-        r = session.post(url=submit_url, data=form_data, files=file_dict)
-    return r
+        response = session.post(url=submit_url, data=form_data, files=file_dict)
+    return response
 
 
 def run_requests(
@@ -152,43 +162,48 @@ def run_requests(
     """Run the actual upload process, using direct HTTP requests.
 
     Login process:
-    0. A :class:`requests.Session` is used for all steps, to save the cookies between http calls.
-    1. Request the submit page. The redirect in the response is used to figure out which parts of 3. are needed.
+    A :class:`requests.Session` is used for all steps, to save the cookies between http calls.
+
+    1. Request the submit page.
+       The redirect in the response is used to figure out which parts of 3. are needed.
     2. Get the csrf-token from the response using :func:`get_token`
-    3.
+    3. Authentication
         1. If login is needed, follow the SAML auth process with requests, then proceed to 3.2.
-            First we make sure we have both username and password,
-            using :func:`ensure_username` and :func:`ensure_password`. Making these optional means
-            we don't have to retrieve them if the saved cookies allow us to go right ahead.
-            Then we do the login process using :func:`login_saml`.
+           First we make sure we have both username and password,
+           using :func:`ensure_username` and :func:`ensure_password`. Making these optional means
+           we don't have to retrieve them if the saved cookies allow us to go right ahead.
+           Then we do the login process using :func:`login_saml`.
         2. If the exam number is needed, submit the exam number.
-            First we make sure we have the exam number using :func:`ensure_exam_number`.
-            Then we send it using :func:`login_exam_number`.
+           First we make sure we have the exam number using :func:`ensure_exam_number`.
+           Then we send it using :func:`login_exam_number`.
     4. Upload the actual file using :func:`upload_assignment`.
 
     :param session: the HTTP session to make requests with and persist cookies onto
-    :param username: username which may or may not be used, and may be None to enable lazy loading (:mod:`credentials`)
+    :param username: username which may or may not be used,
+        and may be None to enable lazy loading (:mod:`credentials`)
     :param password: password, also optional
     :param exam_number: exam number, also optional
     :param use_keyring: passed through to :mod:`credentials` functions
         to enable or disable saving details in the keyring
     :param submit_url: url passed through to :func:`upload_assignment`
     :param file_path: file path also passed through to :func:`upload_assignment`
-    :param dry_run: set this to True in order to skip the actual upload, only doing the login process.
-        Useful for testing. The only argument to this function that isn't passed through to another function
-    :raises requests.HTTPError: from :meth:`Response.raise_for_status`, if any response during the process is not OK.
+    :param dry_run: set this to True in order to skip the actual upload,
+        only actually doing the login process. Useful for testing.
+        The only argument to this function that isn't passed through to another function
+    :raises requests.HTTPError: from :meth:`Response.raise_for_status`,
+        if any response during the process is not OK.
     """
-    r = session.get(submit_url)
-    r.raise_for_status()
-    csrf_token = get_token(r)
+    response = session.get(submit_url)
+    response.raise_for_status()
+    csrf_token = get_token(response)
 
-    if r.url == URL_LOGIN:
+    if response.url == URL_LOGIN:
         print("Logging in..")
         username = ensure_username(username)
         password = ensure_password(username, password, use_keyring=use_keyring)
         exam_number = ensure_exam_number(username, exam_number, use_keyring=use_keyring)
 
-        r = login_saml(
+        response = login_saml(
             session,
             csrf_token,
             username,
@@ -198,32 +213,33 @@ def run_requests(
 
         print("Entering exam number..")
         # the token changes after login
-        csrf_token = get_token(r)
+        csrf_token = get_token(response)
         login_exam_number(session, csrf_token, exam_number)
         print("Entered exam number.")
-    elif r.url == URL_EXAM_NUMBER:
+    elif response.url == URL_EXAM_NUMBER:
         print("Entering exam number..")
         exam_number = ensure_exam_number(username, exam_number, use_keyring=use_keyring)
         login_exam_number(session, csrf_token, exam_number)
         print("Entered exam number.")
-    elif r.url == submit_url:
+    elif response.url == submit_url:
         pass
     else:
-        raise RuntimeError(f"Unexpected redirect '{r.url}'")
+        raise RuntimeError(f"Unexpected redirect '{response.url}'")
 
     print("Uploading file...")
     if dry_run:
         print("Skipped actual upload.")
     else:
-        r = upload_assignment(session, csrf_token, submit_url, file_path)
-        r.raise_for_status()
+        response = upload_assignment(session, csrf_token, submit_url, file_path)
+        response.raise_for_status()
         print("Uploaded fine.")
 
 
 def resolve_submit_url(submit_url: str, base: str = URL_SUBMIT_BASE) -> str:
     """Normalise the submit-url to ensure it's fully qualified.
 
-    :param submit_url: URL to submit to, with or without base URL and leading plus trailing forward slashes.
+    :param submit_url: URL to submit to,
+        with or without base URL and leading/trailing forward slashes.
     :param base: base URL with protocol and base domain, e.g. the default, :const:`URL_SUBMIT_BASE`
     :return: fully qualified URL with protocol, base domain, and no trailing forward slashes
     """
@@ -237,13 +253,16 @@ def main():
 
     First, we parse the command line arguments.
     If :option:`--delete-from-keyring` or :option:`--delete-cookies` are set, do that, then return.
-        If ``FileNotFoundError`` is raised, it will be caught and an error message will be shown, then we continue.
+    If ``FileNotFoundError`` is raised,
+    it will be caught and an error message will be shown, then we continue.
 
-    Next, the arguments are preprocessed: :func:`resolve_submit_url` is called on :option:`--submit-url`.
-        The :option:`--file` option is resolved, and its hash is printed.
+    Next, the arguments are preprocessed:
+    :func:`resolve_submit_url` is called on :option:`--submit-url`.
+    The :option:`--file` option is resolved, and its hash is printed.
 
-    A :class:`cookielib.CookieJar` object is constructed with :option:`--cookie-file` as ``filename``.
-        ``FileNotFoundError`` may be caught and an error message will be shown, then we continue.
+    A :class:`cookielib.CookieJar` object is constructed
+    with :option:`--cookie-file` as ``filename``.
+    ``FileNotFoundError`` may be caught and an error message will be shown, then we continue.
 
     The main event, create a requests :class:`Session`, then call :func:`run_requests`.
 
@@ -278,9 +297,9 @@ def main():
     file_path = args.file.resolve()
     print(f"Found file '{file_path}'.")
     # display hash of file
-    with open(file_path, "rb") as f:
+    with open(file_path, "rb") as file:
         # noinspection PyTypeChecker
-        digest = hashlib.file_digest(f, hashlib.md5).hexdigest()
+        digest = hashlib.file_digest(file, hashlib.md5).hexdigest()
     print(f"MD5 hash of file: {digest}")
 
     # load cookies
