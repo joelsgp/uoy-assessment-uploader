@@ -16,7 +16,7 @@ sys.path.insert(0, path)
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "uoy-assessment-uploader"
-copyright = "2023, jmcb"
+project_copyright = "2023, jmcb"
 author = "jmcb"
 release = "0.5.2"
 
