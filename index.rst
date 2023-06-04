@@ -18,3 +18,10 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
+
+.. autosummary::
+   :recursive:
+   :toctree: generated
+
+   uoy_assessment_uploader
