@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to uoy_assessment_uploader's documentation!
+Welcome to uoy-assessment-uploader's documentation!
 ===================================================
 
 .. toctree::

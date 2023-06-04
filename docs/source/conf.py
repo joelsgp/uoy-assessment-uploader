@@ -6,7 +6,7 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = "uoy_assessment_uploader"
+project = "uoy-assessment-uploader"
 copyright = "2023, jmcb"
 author = "jmcb"
 release = "0.5.2"
