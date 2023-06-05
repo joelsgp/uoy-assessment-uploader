@@ -35,7 +35,7 @@ PEM_FILE = "teaching-cs-york-ac-uk-chain.pem"
 # urls
 URL_EXAM_NUMBER = "https://teaching.cs.york.ac.uk/student/confirm-exam-number"
 URL_LOGIN = "https://shib.york.ac.uk/idp/profile/SAML2/Redirect/SSO?execution=e1s1"
-URL_SUBMIT_BASE = "https://teaching.cs.york.ac.uk/"
+URL_SUBMIT_BASE = "https://teaching.cs.york.ac.uk/student"
 
 # should be like "python-requests/x.y.z"
 USER_AGENT_DEFAULT = requests.utils.default_user_agent()
@@ -293,23 +293,27 @@ def run_requests_session(
 def resolve_submit_url(submit_url: str, base: str = URL_SUBMIT_BASE) -> str:
     """Normalise the submit-url to ensure it's fully qualified.
 
-    >>> resolve_submit_url("student/2021-2/submit/COM00012C/901/A/")
-    'https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A'
-    >>> resolve_submit_url("/student/2021-2/submit/COM00012C/901/A")
-    'https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A'
-    >>> resolve_submit_url("teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A/")
-    'https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A'
+    >>> resolve_submit_url("2021-2/submit/COM00012C/901/A")
+    "https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A"
     >>> resolve_submit_url("https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A")
-    'https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A'
+    https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A
+    >>> resolve_submit_url("/student/2021-2/submit/COM00012C/901/A")
+    https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A
+    >>> resolve_submit_url("teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A/")
+    https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A
 
     :param submit_url: URL to submit to,
         with or without base URL and leading/trailing forward slashes.
     :param base: base URL with protocol and base domain, e.g. the default, :const:`URL_SUBMIT_BASE`
     :return: fully qualified URL with protocol, base domain, and no trailing forward slashes
     """
-    submit_url = submit_url.strip("/")
-    path = urllib.parse.urlparse(submit_url).path
-    submit_url = urllib.parse.urljoin(base, path)
+    parsed_base = urllib.parse.urlparse(base)
+    parsed = urllib.parse.urlparse(submit_url, scheme=parsed_base.scheme)
+
+    stripped_path = parsed.path.removeprefix(parsed_base.path)
+    parsed._replace(path=stripped_path)
+    unparsed = urllib.parse.urlunparse(parsed)
+    submit_url = urllib.parse.urljoin(base, unparsed)
 
     return submit_url
 
