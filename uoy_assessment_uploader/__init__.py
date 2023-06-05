@@ -11,7 +11,6 @@ import importlib.resources
 import re
 from http.cookiejar import LWPCookieJar
 from pathlib import Path
-from typing import Optional
 
 import requests.utils
 from bs4 import BeautifulSoup
@@ -166,13 +165,9 @@ def upload_assignment(
 
 def run_requests(
     session: Session,
-    username: Optional[str],
-    password: Optional[str],
-    exam_number: Optional[str],
-    use_keyring: bool,
+    args: Namespace,
     submit_url: str,
     file_path: Path,
-    dry_run: bool,
 ):
     """Run the actual upload process, using direct HTTP requests.
 
@@ -194,31 +189,29 @@ def run_requests(
     4. Upload the actual file using :func:`upload_assignment`.
 
     :param session: the HTTP session to make requests with and persist cookies onto
-    :param username: username which may or may not be used,
-        and may be None to enable lazy loading (:mod:`credentials`)
-    :param password: password, also optional
-    :param exam_number: exam number, also optional
-    :param use_keyring: passed through to :mod:`credentials` functions
-        to enable or disable saving details in the keyring
+    :param args: command line arguments namespace containing credentials
     :param submit_url: url passed through to :func:`upload_assignment`
     :param file_path: file path also passed through to :func:`upload_assignment`
-    :param dry_run: set this to True in order to skip the actual upload,
-        only actually doing the login process. Useful for testing.
-        The only argument to this function that isn't passed through to another function
     :raises requests.HTTPError: from :meth:`Response.raise_for_status`,
         if any response during the process is not OK.
     """
+    dry_run = args.dry_run
+    use_keyring = args.use_keyring
+
     response = session.get(submit_url)
     response.raise_for_status()
 
     if response.url.startswith(URL_LOGIN_BASE):
         print("Logging in..")
+
         if response.url == URL_LOGIN:
             # full login required
             print("Logging in from scratch.")
-            username = ensure_username(username)
-            password = ensure_password(username, password, use_keyring=use_keyring)
-            exam_number = ensure_exam_number(username, exam_number, use_keyring=use_keyring)
+            username = ensure_username(args.username)
+            password = ensure_password(username, args.password, use_keyring=use_keyring)
+            exam_number = ensure_exam_number(
+                username, args.exam_number, use_keyring=use_keyring
+            )
 
             csrf_token = get_token(response, login_page=True)
             response = login_saml(
@@ -230,7 +223,12 @@ def run_requests(
         else:
             # resume login
             print("Refreshing login.")
+            username = ensure_username(args.username)
+            exam_number = ensure_exam_number(
+                username, args.exam_number, use_keyring=use_keyring
+            )
             response = login_saml_continue(session, response)
+
         response.raise_for_status()
         print("Logged in.")
 
@@ -243,7 +241,9 @@ def run_requests(
     elif response.url == URL_EXAM_NUMBER:
         csrf_token = get_token(response)
         print("Entering exam number..")
-        exam_number = ensure_exam_number(username, exam_number, use_keyring=use_keyring)
+        exam_number = ensure_exam_number(
+            args.username, args.exam_number, use_keyring=use_keyring
+        )
         login_exam_number(session, csrf_token, exam_number)
         print("Entered exam number.")
     elif response.url == submit_url:
@@ -260,7 +260,9 @@ def run_requests(
         print("Uploaded fine.")
 
 
-def run_requests_session(args: Namespace, cookies: LWPCookieJar, file_path: Path, submit_url: str):
+def run_requests_session(
+    args: Namespace, cookies: LWPCookieJar, file_path: Path, submit_url: str
+):
     """Create a session, attach cookies and CA cert file, then run.
 
     :param args: command line arguments object
@@ -279,13 +281,9 @@ def run_requests_session(args: Namespace, cookies: LWPCookieJar, file_path: Path
             session.verify = pem_path
             run_requests(
                 session=session,
+                args=args,
                 submit_url=submit_url,
-                username=args.username,
-                password=args.password,
-                exam_number=args.exam_number,
                 file_path=file_path,
-                dry_run=args.dry_run,
-                use_keyring=args.use_keyring,
             )
 
 
@@ -367,7 +365,9 @@ def main():
         except FileNotFoundError:
             print("No cookies to load!")
 
-    run_requests_session(args=args, cookies=cookies, file_path=file_path, submit_url=submit_url)
+    run_requests_session(
+        args=args, cookies=cookies, file_path=file_path, submit_url=submit_url
+    )
 
     # save cookies
     if args.save_cookies:
