@@ -34,7 +34,7 @@ PEM_FILE = "teaching-cs-york-ac-uk-chain.pem"
 
 # urls
 URL_EXAM_NUMBER = "https://teaching.cs.york.ac.uk/student/confirm-exam-number"
-URL_LOGIN = "https://shib.york.ac.uk/idp/profile/SAML2/Redirect/SSO"
+URL_LOGIN = "https://shib.york.ac.uk/idp/profile/SAML2/Redirect/SSO?execution=e1s1"
 URL_SUBMIT_BASE = "https://teaching.cs.york.ac.uk/student"
 
 # should be like "python-requests/x.y.z"
@@ -300,10 +300,11 @@ def resolve_submit_url(submit_url: str, base: str = URL_SUBMIT_BASE) -> str:
     """
     parsed_base = urllib.parse.urlparse(base)
     parsed = urllib.parse.urlparse(submit_url, scheme=parsed_base.scheme)
-    if parsed.hostname is None:
-        parsed._replace(hostname=parsed_base.hostname)
 
+    parsed.path = parsed.path.removeprefix(parsed_base.path)
     submit_url = urllib.parse.urlunparse(parsed)
+    submit_url = urllib.parse.urljoin(base, submit_url)
+
     return submit_url
 
 
