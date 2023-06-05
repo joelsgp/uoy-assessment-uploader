@@ -32,11 +32,10 @@ __version__ = "0.6.0"
 # https://pypi.org/project/aia/
 PEM_FILE = "teaching-cs-york-ac-uk-chain.pem"
 
+# urls
 URL_EXAM_NUMBER = "https://teaching.cs.york.ac.uk/student/confirm-exam-number"
-URL_SUBMIT_BASE = "https://teaching.cs.york.ac.uk/student"
-
 URL_LOGIN = "https://shib.york.ac.uk/idp/profile/SAML2/Redirect/SSO"
-URL_LOGIN_PARSED = urllib.parse.urlparse(URL_LOGIN)
+URL_SUBMIT_BASE = "https://teaching.cs.york.ac.uk/student"
 
 # should be like "python-requests/x.y.z"
 USER_AGENT_DEFAULT = requests.utils.default_user_agent()
@@ -202,11 +201,13 @@ def run_requests(
     response = session.get(submit_url)
     response.raise_for_status()
 
-    parsed_url = urllib.parse.urlparse(response.url)
-    if (parsed_url.hostname, parsed_url.path) == (URL_LOGIN_PARSED.hostname, URL_LOGIN_PARSED.path):
+    parsed_base = urllib.parse.urlparse(URL_LOGIN)
+    parsed = urllib.parse.urlparse(response.url)
+
+    if (parsed.hostname, parsed.path) == (parsed_base.hostname, parsed_base.path):
         print("Logging in..")
 
-        if parsed_url.query == URL_LOGIN_PARSED.query:
+        if parsed.query == parsed_base.query:
             # full login required
             print("Logging in from scratch.")
             username = ensure_username(args.username)
@@ -297,7 +298,12 @@ def resolve_submit_url(submit_url: str, base: str = URL_SUBMIT_BASE) -> str:
     :param base: base URL with protocol and base domain, e.g. the default, :const:`URL_SUBMIT_BASE`
     :return: fully qualified URL with protocol, base domain, and no trailing forward slashes
     """
-    submit_url = urllib.parse.urljoin(base, submit_url)
+    parsed_base = urllib.parse.urlparse(base)
+    parsed = urllib.parse.urlparse(submit_url, scheme=parsed_base.scheme)
+    if parsed.hostname is None:
+        parsed._replace(hostname=parsed_base.hostname)
+
+    submit_url = urllib.parse.urlunparse(parsed)
     return submit_url
 
 
