@@ -270,8 +270,8 @@ def run_requests_session(
 
     :param args: command line arguments object
     :param cookies: cookie jar object to attach to session
-    :param file_path: passed through to :fun:`run_requests`
-    :param submit_url: passed through to :fun:`run_requests`
+    :param file_path: passed through to :func:`run_requests`
+    :param submit_url: passed through to :func:`run_requests`
     """
     with Session() as session:
         # session setup
@@ -292,6 +292,15 @@ def run_requests_session(
 
 def resolve_submit_url(submit_url: str, base: str = URL_SUBMIT_BASE) -> str:
     """Normalise the submit-url to ensure it's fully qualified.
+
+    >>> resolve_submit_url("2021-2/submit/COM00012C/901/A")
+    "https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A"
+    >>> resolve_submit_url("https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A")
+    https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A
+    >>> resolve_submit_url("/student/2021-2/submit/COM00012C/901/A")
+    https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A
+    >>> resolve_submit_url("teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A/")
+    https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A
 
     :param submit_url: URL to submit to,
         with or without base URL and leading/trailing forward slashes.

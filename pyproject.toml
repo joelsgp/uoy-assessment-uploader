@@ -29,3 +29,9 @@ Home = "https://github.com/joelsgp/uoy-assessment-uploader"
 
 [project.scripts]
 uoy-assessment-uploader = "uoy_assessment_uploader:main"
+
+[tool.isort]
+profile = "black"
+
+[tool.pytest.ini_options]
+addopts = "--doctest-modules"

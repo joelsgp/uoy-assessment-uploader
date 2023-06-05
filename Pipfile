@@ -12,6 +12,7 @@ requests = "~=2.30.0"
 build = "*"
 sphinx = "*"
 sphinx-argparse = "*"
+pytest = "*"
 
 [requires]
 python_version = "3.11"
