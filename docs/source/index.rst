@@ -10,6 +10,7 @@ Welcome to uoy-assessment-uploader's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   usage
    uoy_assessment_uploader
 
 

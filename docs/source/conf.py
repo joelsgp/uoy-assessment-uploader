@@ -26,6 +26,7 @@ release = "0.5.2"
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.viewcode",
+    "sphinxarg.ext"
 ]
 
 # templates_path = ["_templates"]
