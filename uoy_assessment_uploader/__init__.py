@@ -36,7 +36,7 @@ PEM_FILE = "teaching-cs-york-ac-uk-chain.pem"
 RE_SHIBSESSION_COOKIE_NAME = re.compile(r"_shibsession_[0-9a-z]{96}")
 URL_SUBMIT_BASE = "https://teaching.cs.york.ac.uk/student"
 URL_LOGIN_BASE = "https://shib.york.ac.uk/idp/profile/SAML2/Redirect/SSO"
-URL_LOGIN = f"{URL_SUBMIT_BASE}?execution=e1s1"
+URL_LOGIN = f"{URL_LOGIN_BASE}?execution=e1s1"
 URL_EXAM_NUMBER = "https://teaching.cs.york.ac.uk/student/confirm-exam-number"
 # should be like "python-requests/x.y.z"
 USER_AGENT_DEFAULT = requests.utils.default_user_agent()
@@ -92,6 +92,18 @@ def login_saml(
     response = session.post(URL_LOGIN, data=payload)
     response.raise_for_status()
 
+    response = login_saml_continue(session, response)
+    return response
+
+
+def login_saml_continue(session: Session, response: Response) -> Response:
+    """Perform the second step of the SAML SSO login.
+
+    :param session: the HTTP session
+        to make requests with and persist cookies onto
+    :param response: HTTP response from the first login step
+    :return: the HTTP response object from the login request
+    """
     # parse saml response
     soup = BeautifulSoup(response.text, features="html.parser")
     form = soup.find("form")
@@ -200,27 +212,33 @@ def run_requests(
     response.raise_for_status()
 
     if response.url.startswith(URL_LOGIN_BASE):
-        csrf_token = get_token(response, login_page=True)
-
         print("Logging in..")
-        username = ensure_username(username)
-        password = ensure_password(username, password, use_keyring=use_keyring)
-        exam_number = ensure_exam_number(username, exam_number, use_keyring=use_keyring)
+        if response.url == URL_LOGIN:
+            # full login required
+            print("Logging in from scratch.")
+            username = ensure_username(username)
+            password = ensure_password(username, password, use_keyring=use_keyring)
+            exam_number = ensure_exam_number(username, exam_number, use_keyring=use_keyring)
 
-        # todo this needs to be split into two sections.
-        #      there's a flow where it does the first half not the second half
-        response = login_saml(
-            session,
-            csrf_token,
-            username,
-            password,
-        )
+            csrf_token = get_token(response, login_page=True)
+            response = login_saml(
+                session,
+                csrf_token,
+                username,
+                password,
+            )
+        else:
+            # resume login
+            print("Refreshing login.")
+            response = login_saml_continue(session, response)
+        response.raise_for_status()
         print("Logged in.")
 
         print("Entering exam number..")
         # the token changes after login
         csrf_token = get_token(response)
-        login_exam_number(session, csrf_token, exam_number)
+        response = login_exam_number(session, csrf_token, exam_number)
+        response.raise_for_status()
         print("Entered exam number.")
     elif response.url == URL_EXAM_NUMBER:
         csrf_token = get_token(response)
