@@ -5,12 +5,18 @@ import urllib.parse
 from http.cookiejar import LWPCookieJar
 from pathlib import Path
 
+import requests.utils
 from bs4 import BeautifulSoup
 from requests import Response, Session
 
 from .argparse import Namespace
-from .constants import PEM_FILE, URL_EXAM_NUMBER, URL_LOGIN, USER_AGENT
+from .constants import PEM_FILE, URL_EXAM_NUMBER, URL_LOGIN, __version__
 from .credentials import ensure_exam_number, ensure_password, ensure_username
+
+# user agent
+# should be like "python-requests/x.y.z"
+USER_AGENT_DEFAULT = requests.utils.default_user_agent()
+USER_AGENT = f"{USER_AGENT_DEFAULT} {__name__}/{__version__}"
 
 
 def get_token(response: Response, login_page: bool = False) -> str:
