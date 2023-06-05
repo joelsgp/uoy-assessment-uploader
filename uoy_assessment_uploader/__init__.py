@@ -17,7 +17,7 @@ import requests.utils
 from bs4 import BeautifulSoup
 from requests import Response, Session
 
-from .argument_parser import get_parser
+from .argument_parser import Namespace, get_parser
 from .credentials import (
     delete_from_keyring,
     ensure_exam_number,
@@ -260,6 +260,35 @@ def run_requests(
         print("Uploaded fine.")
 
 
+def run_requests_session(args: Namespace, cookies: LWPCookieJar, file_path: Path, submit_url: str):
+    """Create a session, attach cookies and CA cert file, then run.
+
+    :param args: command line arguments object
+    :param cookies: cookie jar object to attach to session
+    :param file_path: passed through to :fun:`run_requests`
+    :param submit_url: passed through to :fun:`run_requests`
+    """
+    with Session() as session:
+        # session setup
+        session.cookies = cookies
+        session.headers.update({"User-Agent": USER_AGENT})
+
+        files = importlib.resources.files(__package__)
+        pem_traversable = files.joinpath(PEM_FILE)
+        with importlib.resources.as_file(pem_traversable) as pem_path:
+            session.verify = pem_path
+            run_requests(
+                session=session,
+                submit_url=submit_url,
+                username=args.username,
+                password=args.password,
+                exam_number=args.exam_number,
+                file_path=file_path,
+                dry_run=args.dry_run,
+                use_keyring=args.use_keyring,
+            )
+
+
 def resolve_submit_url(submit_url: str, base: str = URL_SUBMIT_BASE) -> str:
     """Normalise the submit-url to ensure it's fully qualified.
 
@@ -289,9 +318,9 @@ def main():
     with :option:`--cookie-file` as ``filename``.
     ``FileNotFoundError`` may be caught and an error message will be shown, then we continue.
 
-    The main event, create a requests :class:`Session`, then call :func:`run_requests`.
+    Then, the main even, call :func:`run_requests_session`.
 
-    Finally, save cookies, and finish.
+    Finally, save cookies, and return.
 
     :raises FileNotFoundError: if the file from :option:`--file` does not exist.
     """
@@ -338,25 +367,7 @@ def main():
         except FileNotFoundError:
             print("No cookies to load!")
 
-    with Session() as session:
-        # session setup
-        session.cookies = cookies
-        session.headers.update({"User-Agent": USER_AGENT})
-
-        files = importlib.resources.files(__package__)
-        pem_traversable = files.joinpath(PEM_FILE)
-        with importlib.resources.as_file(pem_traversable) as pem_path:
-            session.verify = pem_path
-            run_requests(
-                session=session,
-                submit_url=submit_url,
-                username=args.username,
-                password=args.password,
-                exam_number=args.exam_number,
-                file_path=file_path,
-                dry_run=args.dry_run,
-                use_keyring=args.use_keyring,
-            )
+    run_requests_session(args=args, cookies=cookies, file_path=file_path, submit_url=submit_url)
 
     # save cookies
     if args.save_cookies:
