@@ -297,8 +297,7 @@ def resolve_submit_url(submit_url: str, base: str = URL_SUBMIT_BASE) -> str:
     :param base: base URL with protocol and base domain, e.g. the default, :const:`URL_SUBMIT_BASE`
     :return: fully qualified URL with protocol, base domain, and no trailing forward slashes
     """
-    submit_url = submit_url.removeprefix(base).strip("/")
-    submit_url = f"{base}/{submit_url}"
+    submit_url = urllib.parse.urljoin(base, submit_url)
     return submit_url
 
 
