@@ -1,6 +1,6 @@
 """Helper functions for parsing command line arguments."""
 
-from argparse import ArgumentParser, Namespace
+import argparse
 from pathlib import Path
 from typing import Optional, Sequence
 
@@ -8,10 +8,7 @@ DEFAULT_ARG_FILE = "exam.zip"
 DEFAULT_ARG_COOKIE_FILE = "cookies.txt"
 
 
-# todo subclass ArgumentParser instead of using helper functions?
-
-
-class Args(Namespace):
+class Namespace(argparse.Namespace):
     """Type-hinted namespace to use with :meth:`ArgumentParser.parse_args`."""
 
     username: Optional[str]
@@ -27,21 +24,15 @@ class Args(Namespace):
     delete_cookies: bool
 
 
-def parse_args(argv: Sequence[str] = None) -> Args:
-    """Construct an argument parser return a type-hinted namespace.
+class ArgumentParser(argparse.ArgumentParser):
+    """Argument parser subclass that returns a type-hinted namespace from :meth:`parse_args`."""
 
-    Wrapper to return a type-hinted :class:`Args` namespace,
-    rather than the default untyped :class:`argparse.Namespace`.
-
-    :param argv: list of command line arguments to parse,
-        or None to use :attr:`sys.argv` by default.
-    :return: namespace with attributes parsed by :meth:`ArgumentParser.parse_args`
-        from the argument sequence
-    """
-    parser = get_parser()
-    args = Args()
-    parser.parse_args(argv, namespace=args)
-    return args
+    def parse_args(
+        self, args: Optional[Sequence[str]] = None, namespace=None
+    ) -> Namespace:
+        if namespace is None:
+            namespace = Namespace()
+        return super().parse_args(args, namespace)
 
 
 def get_parser() -> ArgumentParser:

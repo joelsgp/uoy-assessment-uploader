@@ -17,7 +17,7 @@ import requests.utils
 from bs4 import BeautifulSoup
 from requests import Response, Session
 
-from .argument_parser import parse_args
+from .argument_parser import get_parser
 from .credentials import (
     delete_from_keyring,
     ensure_exam_number,
@@ -26,7 +26,7 @@ from .credentials import (
 )
 
 
-__version__ = "0.5.2"
+__version__ = "0.6.0"
 
 
 # see here:
@@ -53,6 +53,7 @@ def get_token(response: Response) -> str:
     """
     # todo switch to Requests-HTML?
     soup = BeautifulSoup(response.text, features="html.parser")
+    # fixme fix case where the url begins with URL_LOGIN but does not match it
     if response.url == URL_LOGIN:
         tag = soup.find("input", attrs={"type": "hidden", "name": "csrf_token"})
         token = tag["value"]
@@ -271,7 +272,8 @@ def main():
     :raises FileNotFoundError: if the file from :option:`--file` does not exist.
     """
     # load arguments
-    args = parse_args()
+    parser = get_parser()
+    args = parser.parse_args()
 
     # alternate operations
     exit_now = False
