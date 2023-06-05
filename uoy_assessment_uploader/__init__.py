@@ -301,9 +301,10 @@ def resolve_submit_url(submit_url: str, base: str = URL_SUBMIT_BASE) -> str:
     parsed_base = urllib.parse.urlparse(base)
     parsed = urllib.parse.urlparse(submit_url, scheme=parsed_base.scheme)
 
-    parsed.path = parsed.path.removeprefix(parsed_base.path)
-    submit_url = urllib.parse.urlunparse(parsed)
-    submit_url = urllib.parse.urljoin(base, submit_url)
+    stripped_path = parsed.path.removeprefix(parsed_base.path)
+    parsed._replace(path=stripped_path)
+    unparsed = urllib.parse.urlunparse(parsed)
+    submit_url = urllib.parse.urljoin(base, unparsed)
 
     return submit_url
 
