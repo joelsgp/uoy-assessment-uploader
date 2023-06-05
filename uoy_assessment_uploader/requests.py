@@ -234,16 +234,18 @@ def run_requests(
         print("Uploaded fine.")
 
 
-def run_requests_session(
-    args: Namespace, cookies: LWPCookieJar, file_path: Path, submit_url: str
-):
+def run_requests_session(args: Namespace, file_path: Path, submit_url: str):
     """Create a session, attach cookies and CA cert file, then run.
 
     :param args: command line arguments object
-    :param cookies: cookie jar object to attach to session
     :param file_path: passed through to :func:`run_requests`
     :param submit_url: passed through to :func:`run_requests`
     """
+    # load cookies
+    cookies = LWPCookieJar(args.cookie_file)
+    if args.save_cookies:
+        load_cookies(cookies)
+
     with Session() as session:
         # session setup
         session.cookies = cookies
@@ -259,3 +261,26 @@ def run_requests_session(
                 submit_url=submit_url,
                 file_path=file_path,
             )
+
+        # save cookies
+        if args.save_cookies:
+            print(f"Saving cookie file '{cookies.filename}'")
+            cookies.save(ignore_discard=True)
+            print("Saved cookies.")
+
+
+def load_cookies(cookies: LWPCookieJar):
+    """Try to call the cookie jar's :meth:`cookies.load` method.
+
+    ignore_discard is used.
+    If the file :attr:`cookies.filename` doesn't exist, this function will
+    catch FileNotFoundError and print an error message.
+
+    :param cookies: cookie jar to load
+    """
+    print(f"Loading cookie file '{cookies.filename}'")
+    try:
+        cookies.load(ignore_discard=True)
+        print("Loaded cookies.")
+    except FileNotFoundError:
+        print("No cookies to load!")

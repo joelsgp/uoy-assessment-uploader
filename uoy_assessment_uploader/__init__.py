@@ -8,16 +8,15 @@ Files:
 
 import hashlib
 import urllib.parse
-from http.cookiejar import LWPCookieJar
 from pathlib import Path
 
 from .argparse import Namespace, get_parser
 from .constants import URL_SUBMIT_BASE, __version__
-from .credentials import delete_from_keyring, ensure_username
+from .credentials import delete_keyring_entries, ensure_username
 from .requests import run_requests_session
 
 
-def delete_functions(args: Namespace) -> bool:
+def deletion_subcommands(args: Namespace) -> bool:
     """Delete cookie file and keyring entries.
 
     Takes effect if :option:`--delete-cookies`
@@ -42,7 +41,7 @@ def delete_functions(args: Namespace) -> bool:
         print(
             f"Deleting password and exam number from keyring with username '{username}'."
         )
-        delete_from_keyring(username)
+        delete_keyring_entries(username)
         print("Deleted from keyring")
 
     return exit_now
@@ -62,23 +61,6 @@ def print_file_hash(file_path: Path):
         digest = hashlib.file_digest(file, hashlib.md5).hexdigest()
     print(f"MD5 hash of file: {digest}")
     return file_path
-
-
-def load_cookies(cookies: LWPCookieJar):
-    """Try to call the cookie jar's :meth:`cookies.load` method.
-
-    ignore_discard is used.
-    If the file :attr:`cookies.filename` doesn't exist, this function will
-    catch FileNotFoundError and print an error message.
-
-    :param cookies: cookie jar to load
-    """
-    print(f"Loading cookie file '{cookies.filename}'")
-    try:
-        cookies.load(ignore_discard=True)
-        print("Loaded cookies.")
-    except FileNotFoundError:
-        print("No cookies to load!")
 
 
 def resolve_submit_url(submit_url: str, base: str = URL_SUBMIT_BASE) -> str:
@@ -137,7 +119,7 @@ def main():
     args = parser.parse_args()
 
     # alternate operations
-    if delete_functions(args):
+    if deletion_subcommands(args):
         return
 
     # verify arguments
@@ -145,20 +127,7 @@ def main():
     # check zip to be uploaded exists
     file_path = print_file_hash(args.file)
 
-    # load cookies
-    cookies = LWPCookieJar(args.cookie_file)
-    if args.save_cookies:
-        load_cookies(cookies)
-
-    run_requests_session(
-        args=args, cookies=cookies, file_path=file_path, submit_url=submit_url
-    )
-
-    # save cookies
-    if args.save_cookies:
-        print(f"Saving cookie file '{cookies.filename}'")
-        cookies.save(ignore_discard=True)
-        print("Saved cookies.")
+    run_requests_session(args=args, file_path=file_path, submit_url=submit_url)
 
     print("Finished!")
 

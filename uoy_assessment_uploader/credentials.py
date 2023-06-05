@@ -15,7 +15,7 @@ PROMPT_PASSWORD = "Password: "
 PROMPT_EXAM_NUMBER = "Exam number: "
 
 
-def delete_from_keyring(username: str):
+def delete_keyring_entries(username: str):
     """Delete password and exam number from keyring based on username.
 
     The service name used is based on ``__name__`` (uoy_assessment_uploader.credentials),
