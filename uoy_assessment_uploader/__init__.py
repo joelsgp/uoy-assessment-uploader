@@ -9,11 +9,76 @@ Files:
 import hashlib
 import urllib.parse
 from http.cookiejar import LWPCookieJar
+from pathlib import Path
 
-from .argparse import get_parser
+from .argparse import Namespace, get_parser
 from .constants import URL_SUBMIT_BASE, __version__
 from .credentials import delete_from_keyring, ensure_username
 from .requests import run_requests_session
+
+
+def delete_functions(args: Namespace) -> bool:
+    """Delete cookie file and keyring entries.
+
+    Takes effect if :option:`--delete-cookies`
+    and :option:`--delete-from-keyring` are set, respectively.
+
+    :param args: parsed command line arguments namespace
+    :return: boolean indicating whether to exit now if we did stuff
+    """
+    exit_now = False
+    if args.delete_cookies:
+        exit_now = True
+        cookie_file = args.cookie_file
+        print(f"Deleting cookie file '{cookie_file}'")
+        try:
+            cookie_file.unlink()
+            print("Deleted cookie file.")
+        except FileNotFoundError:
+            print("Cookie file doesn't exist.")
+    if args.delete_from_keyring:
+        exit_now = True
+        username = ensure_username(args.username)
+        print(
+            f"Deleting password and exam number from keyring with username '{username}'."
+        )
+        delete_from_keyring(username)
+        print("Deleted from keyring")
+
+    return exit_now
+
+
+def print_file_hash(file_path: Path):
+    """Resolve the file path and print its checksum.
+
+    :param file_path: path object to resolve and hash
+    :return: a fully resolved path object of the same path
+    """
+    file_path = file_path.resolve()
+    print(f"Found file '{file_path}'.")
+    # display hash of file
+    with open(file_path, "rb") as file:
+        # noinspection PyTypeChecker
+        digest = hashlib.file_digest(file, hashlib.md5).hexdigest()
+    print(f"MD5 hash of file: {digest}")
+    return file_path
+
+
+def load_cookies(cookies: LWPCookieJar):
+    """Try to call the cookie jar's :meth:`cookies.load` method.
+
+    ignore_discard is used.
+    If the file :attr:`cookies.filename` doesn't exist, this function will
+    catch FileNotFoundError and print an error message.
+
+    :param cookies: cookie jar to load
+    """
+    print(f"Loading cookie file '{cookies.filename}'")
+    try:
+        cookies.load(ignore_discard=True)
+        print("Loaded cookies.")
+    except FileNotFoundError:
+        print("No cookies to load!")
 
 
 def resolve_submit_url(submit_url: str, base: str = URL_SUBMIT_BASE) -> str:
@@ -33,6 +98,7 @@ def resolve_submit_url(submit_url: str, base: str = URL_SUBMIT_BASE) -> str:
     :param base: base URL with protocol and base domain, e.g. the default, :const:`URL_SUBMIT_BASE`
     :return: fully qualified URL with protocol, base domain, and no trailing forward slashes
     """
+    # todo make tests pass
     parsed_base = urllib.parse.urlparse(base)
     parsed = urllib.parse.urlparse(submit_url, scheme=parsed_base.scheme)
 
@@ -53,8 +119,8 @@ def main():
     it will be caught and an error message will be shown, then we continue.
 
     Next, the arguments are preprocessed:
-    :func:`resolve_submit_url` is called on :option:`--submit-url`.
-    The :option:`--file` option is resolved, and its hash is printed.
+    * :func:`resolve_submit_url` is called on :option:`--submit-url`.
+    * :func:`print_file_hash` is called on :option:`--file`.
 
     A :class:`cookielib.CookieJar` object is constructed
     with :option:`--cookie-file` as ``filename``.
@@ -71,43 +137,18 @@ def main():
     args = parser.parse_args()
 
     # alternate operations
-    exit_now = False
-    if args.delete_cookies:
-        exit_now = True
-        print(f"Deleting cookie file '{args.cookie_file}'")
-        try:
-            args.cookie_file.unlink()
-            print("Deleted cookie file.")
-        except FileNotFoundError:
-            print("Cookie file doesn't exist.")
-    if args.delete_from_keyring:
-        print("Deleting password and exam number from keyring.")
-        exit_now = True
-        username = ensure_username(args.username)
-        delete_from_keyring(username)
-    if exit_now:
+    if delete_functions(args):
         return
 
     # verify arguments
     submit_url = resolve_submit_url(args.submit_url)
     # check zip to be uploaded exists
-    file_path = args.file.resolve()
-    print(f"Found file '{file_path}'.")
-    # display hash of file
-    with open(file_path, "rb") as file:
-        # noinspection PyTypeChecker
-        digest = hashlib.file_digest(file, hashlib.md5).hexdigest()
-    print(f"MD5 hash of file: {digest}")
+    file_path = print_file_hash(args.file)
 
     # load cookies
     cookies = LWPCookieJar(args.cookie_file)
     if args.save_cookies:
-        print(f"Loading cookie file '{args.cookie_file}'")
-        try:
-            cookies.load(ignore_discard=True)
-            print("Loaded cookies.")
-        except FileNotFoundError:
-            print("No cookies to load!")
+        load_cookies(cookies)
 
     run_requests_session(
         args=args, cookies=cookies, file_path=file_path, submit_url=submit_url
@@ -115,6 +156,7 @@ def main():
 
     # save cookies
     if args.save_cookies:
+        print(f"Saving cookie file '{cookies.filename}'")
         cookies.save(ignore_discard=True)
         print("Saved cookies.")
 
