@@ -35,26 +35,28 @@ __version__ = "0.6.0"
 PEM_FILE = "teaching-cs-york-ac-uk-chain.pem"
 RE_SHIBSESSION_COOKIE_NAME = re.compile(r"_shibsession_[0-9a-z]{96}")
 URL_SUBMIT_BASE = "https://teaching.cs.york.ac.uk/student"
-URL_LOGIN = "https://shib.york.ac.uk/idp/profile/SAML2/Redirect/SSO?execution=e1s1"
+URL_LOGIN_BASE = "https://shib.york.ac.uk/idp/profile/SAML2/Redirect/SSO"
+URL_LOGIN = f"{URL_SUBMIT_BASE}?execution=e1s1"
 URL_EXAM_NUMBER = "https://teaching.cs.york.ac.uk/student/confirm-exam-number"
 # should be like "python-requests/x.y.z"
 USER_AGENT_DEFAULT = requests.utils.default_user_agent()
 USER_AGENT = f"{USER_AGENT_DEFAULT} {__name__}/{__version__}"
 
 
-def get_token(response: Response) -> str:
+def get_token(response: Response, login_page: bool = False) -> str:
     """Get the CS Portal token from the HTTP response.
 
     The token is taken from the value of form input element csrf_token, on the login page,
     or from the content of the meta tag csrf-token, for all other webpages.
 
     :param response: HTTP response from a URL at teaching.cs.york.ac.uk
+    :param login_page: If False, parse token from meta tag. If True, parse token from form element.
     :return: the token, an arbitrary string of letters and numbers used for verification
     """
-    # todo switch to Requests-HTML?
+    # could switch to Requests-HTML?
+    # https://requests-html.kennethreitz.org/
     soup = BeautifulSoup(response.text, features="html.parser")
-    # fixme fix case where the url begins with URL_LOGIN but does not match it
-    if response.url == URL_LOGIN:
+    if login_page:
         tag = soup.find("input", attrs={"type": "hidden", "name": "csrf_token"})
         token = tag["value"]
     else:
@@ -196,14 +198,17 @@ def run_requests(
     """
     response = session.get(submit_url)
     response.raise_for_status()
-    csrf_token = get_token(response)
 
-    if response.url == URL_LOGIN:
+    if response.url.startswith(URL_LOGIN_BASE):
+        csrf_token = get_token(response, login_page=True)
+
         print("Logging in..")
         username = ensure_username(username)
         password = ensure_password(username, password, use_keyring=use_keyring)
         exam_number = ensure_exam_number(username, exam_number, use_keyring=use_keyring)
 
+        # todo this needs to be split into two sections.
+        #      there's a flow where it does the first half not the second half
         response = login_saml(
             session,
             csrf_token,
@@ -218,12 +223,13 @@ def run_requests(
         login_exam_number(session, csrf_token, exam_number)
         print("Entered exam number.")
     elif response.url == URL_EXAM_NUMBER:
+        csrf_token = get_token(response)
         print("Entering exam number..")
         exam_number = ensure_exam_number(username, exam_number, use_keyring=use_keyring)
         login_exam_number(session, csrf_token, exam_number)
         print("Entered exam number.")
     elif response.url == submit_url:
-        pass
+        csrf_token = get_token(response)
     else:
         raise RuntimeError(f"Unexpected redirect '{response.url}'")
 
