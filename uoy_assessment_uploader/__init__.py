@@ -7,13 +7,21 @@ Files:
 """
 
 import hashlib
+import re
+import sys
 import urllib.parse
 from pathlib import Path
+from typing import Optional
 
 from .argparse import Namespace, get_parser
-from .constants import URL_SUBMIT_BASE, __version__
+from .constants import URL_SUBMIT_BASE, URL_SUBMIT_EXAMPLE, __version__
 from .credentials import delete_keyring_entries, ensure_username
 from .requests import run_requests_session
+
+# todo check
+REGEX_SUBMIT_URL = re.compile(
+    r"(((https?:)?//)?teaching.cs.york.ac.uk)?(/student)?/?(P<path>\d{4}-\d/submit/([A-Z\d]+/\d+)(/A?)?)"
+)
 
 
 def deletion_subcommands(args: Namespace) -> bool:
@@ -63,36 +71,36 @@ def print_file_hash(file_path: Path):
     return file_path
 
 
-def resolve_submit_url(submit_url: str, base: str = URL_SUBMIT_BASE) -> str:
+def resolve_submit_url(submit_url: str, base: str = URL_SUBMIT_BASE) -> Optional[str]:
     """Normalise the submit-url to ensure it's fully qualified.
 
     >>> resolve_submit_url("2021-2/submit/COM00012C/901/A")
-    "https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A"
+    'https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A'
     >>> resolve_submit_url("https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A")
-    https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A
+    'https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A'
     >>> resolve_submit_url("/student/2021-2/submit/COM00012C/901/A")
-    https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A
+    'https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A'
     >>> resolve_submit_url("teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A/")
-    https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A
+    'https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A'
+    >>> resolve_submit_url("toodle pip")
+    None
 
     :param submit_url: URL to submit to,
         with or without base URL and leading/trailing forward slashes.
     :param base: base URL with protocol and base domain, e.g. the default, :const:`URL_SUBMIT_BASE`
     :return: fully qualified URL with protocol, base domain, and no trailing forward slashes
     """
-    # todo make tests pass
-    parsed_base = urllib.parse.urlparse(base)
-    parsed = urllib.parse.urlparse(submit_url, scheme=parsed_base.scheme)
-
-    stripped_path = parsed.path.removeprefix(parsed_base.path)
-    parsed._replace(path=stripped_path)
-    unparsed = urllib.parse.urlunparse(parsed)
-    submit_url = urllib.parse.urljoin(base, unparsed)
+    match = REGEX_SUBMIT_URL.fullmatch(submit_url)
+    if match is None:
+        return None
+    path = match.group("path")
+    path = f"student/{path}/A"
+    submit_url = urllib.parse.urljoin(base, path)
 
     return submit_url
 
 
-def main():
+def main() -> int:
     """Run the command line script as intended.
 
     First, we parse the command line arguments.
@@ -113,6 +121,7 @@ def main():
     Finally, save cookies, and return.
 
     :raises FileNotFoundError: if the file from :option:`--file` does not exist.
+    :return: an integer return code to be passed to :func:`sys.exit`
     """
     # load arguments
     parser = get_parser()
@@ -120,17 +129,24 @@ def main():
 
     # alternate operations
     if deletion_subcommands(args):
-        return
+        return 0
 
-    # verify arguments
+    # verify submit url
     submit_url = resolve_submit_url(args.submit_url)
+    if submit_url is None:
+        print(f"Invalid submit url: '{args.submit_url}'")
+        print("It should look something like this:")
+        print(URL_SUBMIT_EXAMPLE)
+        return 1
+
     # check zip to be uploaded exists
     file_path = print_file_hash(args.file)
 
     run_requests_session(args=args, file_path=file_path, submit_url=submit_url)
 
     print("Finished!")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
