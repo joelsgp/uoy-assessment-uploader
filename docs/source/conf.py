@@ -6,7 +6,6 @@
 import sys
 from pathlib import Path
 
-
 cwd = Path.cwd().resolve()
 root = cwd.parents[1]
 path = str(root)

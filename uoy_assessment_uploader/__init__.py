@@ -8,7 +8,7 @@ Files:
 
 import hashlib
 import importlib.resources
-import re
+import urllib.parse
 from http.cookiejar import LWPCookieJar
 from pathlib import Path
 
@@ -24,7 +24,6 @@ from .credentials import (
     ensure_username,
 )
 
-
 __version__ = "0.6.0"
 
 
@@ -32,11 +31,13 @@ __version__ = "0.6.0"
 # https://stackoverflow.com/questions/27068163/python-requests-not-handling-missing-intermediate-certificate-only-from-one-mach
 # https://pypi.org/project/aia/
 PEM_FILE = "teaching-cs-york-ac-uk-chain.pem"
-RE_SHIBSESSION_COOKIE_NAME = re.compile(r"_shibsession_[0-9a-z]{96}")
-URL_SUBMIT_BASE = "https://teaching.cs.york.ac.uk/student"
-URL_LOGIN_BASE = "https://shib.york.ac.uk/idp/profile/SAML2/Redirect/SSO"
-URL_LOGIN = f"{URL_LOGIN_BASE}?execution=e1s1"
+
 URL_EXAM_NUMBER = "https://teaching.cs.york.ac.uk/student/confirm-exam-number"
+URL_SUBMIT_BASE = "https://teaching.cs.york.ac.uk/student"
+
+URL_LOGIN = "https://shib.york.ac.uk/idp/profile/SAML2/Redirect/SSO"
+URL_LOGIN_PARSED = urllib.parse.urlparse(URL_LOGIN)
+
 # should be like "python-requests/x.y.z"
 USER_AGENT_DEFAULT = requests.utils.default_user_agent()
 USER_AGENT = f"{USER_AGENT_DEFAULT} {__name__}/{__version__}"
@@ -201,10 +202,11 @@ def run_requests(
     response = session.get(submit_url)
     response.raise_for_status()
 
-    if response.url.startswith(URL_LOGIN_BASE):
+    parsed_url = urllib.parse.urlparse(response.url)
+    if (parsed_url.hostname, parsed_url.path) == (URL_LOGIN_PARSED.hostname, URL_LOGIN_PARSED.path):
         print("Logging in..")
 
-        if response.url == URL_LOGIN:
+        if parsed_url.query == URL_LOGIN_PARSED.query:
             # full login required
             print("Logging in from scratch.")
             username = ensure_username(args.username)
