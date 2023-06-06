@@ -18,9 +18,12 @@ from .constants import URL_SUBMIT_BASE, URL_SUBMIT_EXAMPLE, __version__
 from .credentials import delete_keyring_entries, ensure_username
 from .requests import run_requests_session
 
-# todo check
 REGEX_SUBMIT_URL = re.compile(
-    r"(((https?:)?//)?teaching.cs.york.ac.uk)?(/student)?/?(P<path>\d{4}-\d/submit/([A-Z\d]+/\d+)(/A?)?)"
+    r"(?P<base>((https?:)?//)?teaching\.cs\.york\.ac\.uk)?"
+    r"((?(base)/|/?)student)?/?"
+    r"(?P<path>\d{4}-\d/submit/([A-Z\d]+/\d+))"
+    r"(/A)?/?",
+    re.VERBOSE,
 )
 
 
@@ -82,8 +85,8 @@ def resolve_submit_url(submit_url: str, base: str = URL_SUBMIT_BASE) -> Optional
     'https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A'
     >>> resolve_submit_url("teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A/")
     'https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A'
-    >>> resolve_submit_url("toodle pip")
-    None
+    >>> resolve_submit_url("toooodle pip") is None
+    True
 
     :param submit_url: URL to submit to,
         with or without base URL and leading/trailing forward slashes.
