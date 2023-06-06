@@ -41,21 +41,25 @@ If this matches the hash shown by the program, you can be certain you successful
 
 ## Example
 ```shell
-uoy-assessment-uploader --username "ab1234" --exam-number "Y1234567" --submit-url "/2021-2/submit/COM00012C/901/A"
+uoy-assessment-uploader --dry-run \
+    --username "ab1234" --exam-number "Y1234567" \
+    --submit-url "https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A"
 ```
 
 ```
-Found file 'exam.zip'.
-MD5 hash of file: 05086595c7c7c1a962d6eff6872e18c0
+Found file '/home/joelm/src/uoy-assessment-uploader/exam.zip'.
+MD5 hash of file: 8bbd39fa6a215eb1ea43c34b0da764b9
 Loading cookie file 'cookies.txt'
-No cookies to load!
+Loaded cookies.
 Logging in..
+Logging in from scratch.
 Password: <PASSWORD HIDDEN>
 Logged in.
 Entering exam number..
 Entered exam number.
 Uploading file...
-Uploaded fine.
+Skipped actual upload.
+Saving cookie file 'cookies.txt'
 Saved cookies.
 Finished!
 ```
