@@ -81,16 +81,17 @@ def resolve_submit_url(submit_url: str, base: str = URL_SUBMIT_BASE) -> Optional
     """Normalise the submit-url to ensure it's fully qualified.
 
     >>> result = "https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A"
-    >>> result == resolve_submit_url("2021-2/submit/COM00012C/901/A")
-    True
-    >>> result == resolve_submit_url("https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A")
-    True
-    >>> result == resolve_submit_url("/student/2021-2/submit/COM00012C/901/A")
-    True
-    >>> result == resolve_submit_url("teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A/")
-    True
-    >>> resolve_submit_url("toooodle pip") is None
-    True
+    >>> for url in (
+    ...     "2021-2/submit/COM00012C/901/A",
+    ...     "/2021-2/submit/COM00012C/901/A/",
+    ...     "student/2021-2/submit/COM00012C/901/A",
+    ...     "/student/2021-2/submit/COM00012C/901/A/",
+    ...     "teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A",
+    ...     "//teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A",
+    ...     "https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A",
+    ... ):
+    ...     assert resolve_submit_url(url) == result
+    >>> assert resolve_submit_url("toooodle pip") is None
 
     :param submit_url: URL to submit to,
         with or without base URL and leading/trailing forward slashes.
