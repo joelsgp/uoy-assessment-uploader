@@ -19,12 +19,13 @@ from .credentials import delete_keyring_entries, ensure_username
 from .requests import run_requests_session
 
 REGEX_SUBMIT_URL = re.compile(
-    r"(?P<base>((https?:)?//)?teaching\.cs\.york\.ac\.uk)?"
-    r"((?(base)/|/?)student)?/?"
+    r"((((((https?:)?//)?teaching\.cs\.york\.ac\.uk)?/)?student)?/)?"
     r"(?P<path>\d{4}-\d/submit/([A-Z\d]+/\d+))"
     r"(/A)?/?",
     re.VERBOSE,
 )
+# todo fix sphinx
+# todo ci build
 
 
 def deletion_subcommands(args: Namespace) -> bool:
@@ -37,6 +38,7 @@ def deletion_subcommands(args: Namespace) -> bool:
     :return: boolean indicating whether to exit now if we did stuff
     """
     exit_now = False
+    # delete cookies?
     if args.delete_cookies:
         exit_now = True
         cookie_file = args.cookie_file
@@ -46,6 +48,7 @@ def deletion_subcommands(args: Namespace) -> bool:
             print("Deleted cookie file.")
         except FileNotFoundError:
             print("Cookie file doesn't exist.")
+    # delete keyring entries?
     if args.delete_from_keyring:
         exit_now = True
         username = ensure_username(args.username)
@@ -77,14 +80,15 @@ def print_file_hash(file_path: Path):
 def resolve_submit_url(submit_url: str, base: str = URL_SUBMIT_BASE) -> Optional[str]:
     """Normalise the submit-url to ensure it's fully qualified.
 
-    >>> resolve_submit_url("2021-2/submit/COM00012C/901/A")
-    'https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A'
-    >>> resolve_submit_url("https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A")
-    'https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A'
-    >>> resolve_submit_url("/student/2021-2/submit/COM00012C/901/A")
-    'https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A'
-    >>> resolve_submit_url("teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A/")
-    'https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A'
+    >>> result = "https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A"
+    >>> result == resolve_submit_url("2021-2/submit/COM00012C/901/A")
+    True
+    >>> result == resolve_submit_url("https://teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A")
+    True
+    >>> result == resolve_submit_url("/student/2021-2/submit/COM00012C/901/A")
+    True
+    >>> result == resolve_submit_url("teaching.cs.york.ac.uk/student/2021-2/submit/COM00012C/901/A/")
+    True
     >>> resolve_submit_url("toooodle pip") is None
     True
 
@@ -95,7 +99,7 @@ def resolve_submit_url(submit_url: str, base: str = URL_SUBMIT_BASE) -> Optional
     """
     match = REGEX_SUBMIT_URL.fullmatch(submit_url)
     if match is None:
-        return None
+        return
     path = match.group("path")
     path = f"student/{path}/A"
     submit_url = urllib.parse.urljoin(base, path)
