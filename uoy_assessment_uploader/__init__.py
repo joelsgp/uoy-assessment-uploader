@@ -106,7 +106,7 @@ def resolve_submit_url(submit_url: str, base: str = URL_SUBMIT_BASE) -> Optional
     return submit_url
 
 
-def main() -> int:
+def main_exit_code() -> int:
     """Run the command line script as intended.
 
     First, we parse the command line arguments.
@@ -154,5 +154,10 @@ def main() -> int:
     return 0
 
 
+def main():
+    """Call :func:`sys.exit` with code from :func:`main_exit_code`."""
+    sys.exit(main_exit_code())
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
