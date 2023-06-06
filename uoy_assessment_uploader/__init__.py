@@ -24,8 +24,6 @@ REGEX_SUBMIT_URL = re.compile(
     r"(/A)?/?",
     re.VERBOSE,
 )
-# todo fix sphinx
-# todo ci build
 
 
 def deletion_subcommands(args: Namespace) -> bool:
