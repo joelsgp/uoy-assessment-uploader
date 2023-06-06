@@ -98,7 +98,7 @@ def resolve_submit_url(submit_url: str, base: str = URL_SUBMIT_BASE) -> Optional
     """
     match = REGEX_SUBMIT_URL.fullmatch(submit_url)
     if match is None:
-        return
+        return None
     path = match.group("path")
     path = f"student/{path}/A"
     submit_url = urllib.parse.urljoin(base, path)
