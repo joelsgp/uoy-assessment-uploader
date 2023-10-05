@@ -135,7 +135,7 @@ def upload_assignment(
     """
     with open(file_path, "rb") as file:
         file_dict = {"file": (file_path.name, file)}
-        form_data = {"_token": csrf_token}
+        form_data = {"ownwork": 1, "_token": csrf_token}
         response = session.post(url=submit_url, data=form_data, files=file_dict)
     return response
 
