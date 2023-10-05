@@ -1,10 +1,9 @@
 [build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
 
 [project]
 name = "uoy-assessment-uploader"
-description = "Tool for automating submitting assessments to the University of York Computer Science department."
 readme = "README.md"
 requires-python = ">=3.8"
 authors = [{name = "jmcb", email = "joelsgp@protonmail.com"}]
@@ -23,7 +22,7 @@ dependencies = [
     "keyring ~= 24.2.0",
     "requests ~= 2.31.0",
 ]
-dynamic = ["version"]
+dynamic = ["version", "description"]
 
 [project.urls]
 Home = "https://github.com/joelsgp/uoy-assessment-uploader"
@@ -36,6 +35,3 @@ profile = "black"
 
 [tool.pytest.ini_options]
 addopts = "--doctest-modules"
-
-[tool.setuptools.dynamic]
-version = {attr = "uoy_assessment_uploader.__version__"}
