@@ -19,8 +19,8 @@ classifiers = [
 ]
 dependencies = [
     "beautifulsoup4 ~= 4.12.2",
-    "keyring ~= 23.13.1",
-    "requests ~= 2.30.0",
+    "keyring ~= 24.2.0",
+    "requests ~= 2.31.0",
 ]
 dynamic = ["version", "description"]
 

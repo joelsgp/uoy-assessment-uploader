@@ -1,6 +1,6 @@
 """Constants including version and URLs."""
 
-__version__ = "0.6.1"
+__version__ = "0.6.2"
 
 # see here:
 # https://stackoverflow.com/questions/27068163/python-requests-not-handling-missing-intermediate-certificate-only-from-one-mach

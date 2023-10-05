@@ -4,9 +4,9 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-beautifulsoup4 = "~=4.12.2"
-keyring = "~=23.13.1"
-requests = "~=2.30.0"
+beautifulsoup4 = "*"
+keyring = "*"
+requests = "*"
 
 [dev-packages]
 build = "*"
