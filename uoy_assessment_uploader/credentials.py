@@ -6,6 +6,8 @@ from typing import Optional
 import keyring
 import keyring.errors
 
+from uoy_assessment_uploader.constants import NAME
+
 # used for service_name in keyring calls
 KEYRING_NAME_PASSWORD = "password"
 KEYRING_NAME_EXAM_NUMBER = "exam-number"
@@ -15,16 +17,20 @@ PROMPT_PASSWORD = "Password: "
 PROMPT_EXAM_NUMBER = "Exam number: "
 
 
+def get_service_name(credential: str) -> str:
+    return f"{NAME}-{credential}"
+
+
 def delete_keyring_entries(username: str):
     """Delete password and exam number from keyring based on username.
 
-    The service name used is based on ``__name__`` (uoy_assessment_uploader.credentials),
+    The service name used is uoy-assessment-uploader plus
     with ``-username`` and ``-exam-number`` for username and exam number respectively.
 
     :param username: Username passed to :func:`keyring.delete_password`
     """
     for keyring_name in (KEYRING_NAME_PASSWORD, KEYRING_NAME_EXAM_NUMBER):
-        service_name = f"{__name__}-{keyring_name}"
+        service_name = get_service_name(keyring_name)
         print(f"{keyring_name} - deleting from keyring")
         try:
             keyring.delete_password(service_name, username)
@@ -109,13 +115,13 @@ def ensure_credential(
         using :func:`keyring.get_password`.
         When the credential is not in the keyring, fall back to getpass.
         Finally, the credential is saved to the keyring for next time.
-    :param keyring_name: concatenated with :data:`__name__`
+    :param keyring_name: passed to :func:`get_service_name`
         to get the ``service_name`` to pass to :mod:`keyring`
     :param prompt: prompt for :func:`getpass` to use
         if the credential is not retrieved from the keyring.
     :return: the new credential, or the original argument, if it was not None.
     """
-    service_name = f"{__name__}-{keyring_name}"
+    service_name = get_service_name(keyring_name)
     # try keyring
     got_from_keyring = False
     if use_keyring and credential is None:

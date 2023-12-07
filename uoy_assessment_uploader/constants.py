@@ -2,6 +2,8 @@
 
 __version__ = "1.0.0"
 
+NAME = "uoy-assessment-uploader"
+
 # urls
 URL_EXAM_NUMBER = "https://teaching.cs.york.ac.uk/student/confirm-exam-number"
 URL_LOGIN = "https://shib.york.ac.uk/idp/profile/SAML2/Redirect/SSO?execution=e1s1"
