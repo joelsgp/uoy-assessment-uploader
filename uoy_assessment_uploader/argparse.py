@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional, Sequence
 
 DEFAULT_ARG_FILE = "exam.zip"
+# todo: use ~/.cache/name/cookies.txt as default?
 DEFAULT_ARG_COOKIE_FILE = "cookies.txt"
 
 
