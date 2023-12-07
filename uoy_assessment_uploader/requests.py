@@ -1,6 +1,5 @@
 """Functions to carry out the actual login and submission process, using :mod:`requests`."""
 
-import importlib.resources
 import urllib.parse
 from http.cookiejar import LWPCookieJar
 from pathlib import Path
@@ -10,7 +9,7 @@ from bs4 import BeautifulSoup
 from requests import Response, Session
 
 from .argparse import Namespace
-from .constants import PEM_FILE, URL_EXAM_NUMBER, URL_LOGIN, __version__
+from .constants import URL_EXAM_NUMBER, URL_LOGIN, __version__
 from .credentials import ensure_exam_number, ensure_password, ensure_username
 
 # user agent
@@ -257,16 +256,12 @@ def run_requests_session(args: Namespace, file_path: Path, submit_url: str):
         session.cookies = cookies
         session.headers.update({"User-Agent": USER_AGENT})
 
-        files = importlib.resources.files(__package__)
-        pem_traversable = files.joinpath(PEM_FILE)
-        with importlib.resources.as_file(pem_traversable) as pem_path:
-            session.verify = pem_path
-            run_requests(
-                session=session,
-                args=args,
-                submit_url=submit_url,
-                file_path=file_path,
-            )
+        run_requests(
+            session=session,
+            args=args,
+            submit_url=submit_url,
+            file_path=file_path,
+        )
 
         # save cookies
         if args.save_cookies:

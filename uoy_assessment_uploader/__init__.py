@@ -1,10 +1,4 @@
-"""Tool for automating submitting assessments to the University of York Computer Science department.
-
-Files:
-    ``teaching-cs-york-ac-uk-chain.pem`` is used as :attr:`requests.Session.verify`,
-    due to CA issues.
-    See the comments on :const:`PEM_FILE`
-"""
+"""Tool for automating submitting assessments to the University of York Computer Science department."""
 
 import hashlib
 import re
