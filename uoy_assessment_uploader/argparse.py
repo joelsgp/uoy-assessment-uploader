@@ -4,9 +4,11 @@ import argparse
 from pathlib import Path
 from typing import Optional, Sequence
 
+from uoy_assessment_uploader.constants import NAME
+
 DEFAULT_ARG_FILE = "exam.zip"
-# todo: use ~/.cache/name/cookies.txt as default?
-DEFAULT_ARG_COOKIE_FILE = "cookies.txt"
+DEFAULT_ARG_COOKIE_FILE_NAME = "cookies.txt"
+DEFAULT_ARG_COOKIE_FILE = Path.home() / ".cache" / NAME / DEFAULT_ARG_COOKIE_FILE_NAME
 
 
 class Namespace(argparse.Namespace):
