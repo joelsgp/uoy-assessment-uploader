@@ -9,12 +9,12 @@ keyring = "*"
 requests = "*"
 
 [dev-packages]
+black = "*"
 build = "*"
+isort = "*"
+pytest = "*"
 sphinx = "*"
 sphinx-argparse = "*"
-pytest = "*"
-black = "*"
-isort = "*"
 
 [requires]
 python_version = "3.11"
