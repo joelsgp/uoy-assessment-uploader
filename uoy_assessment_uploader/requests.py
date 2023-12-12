@@ -248,6 +248,8 @@ def run_requests_session(args: Namespace, file_path: Path, submit_url: str):
     """
     # load cookies
     cookies = LWPCookieJar(args.cookie_file)
+    # create cookie file's folder if it doesn't exist
+    args.cookie_file.parent.mkdir(parents=True, exist_ok=True)
     if args.save_cookies:
         load_cookies(cookies)
 
