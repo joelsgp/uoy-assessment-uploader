@@ -4,7 +4,7 @@ import argparse
 from pathlib import Path
 from typing import Optional, Sequence
 
-from uoy_assessment_uploader.constants import NAME
+from .constants import NAME
 
 DEFAULT_ARG_FILE = "exam.zip"
 DEFAULT_ARG_COOKIE_FILE_NAME = "cookies.txt"

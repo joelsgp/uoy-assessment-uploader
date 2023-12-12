@@ -6,7 +6,7 @@ from typing import Optional
 import keyring
 import keyring.errors
 
-from uoy_assessment_uploader.constants import NAME
+from .constants import NAME
 
 # used for service_name in keyring calls
 KEYRING_NAME_PASSWORD = "password"
